@@ -8,6 +8,9 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(ggplot2)
 library(plyr)
 library(dplyr)
+library(GGally)
+library(tidyverse)
+library(naniar)
 ```
 
 ## Context
@@ -18,6 +21,8 @@ Although there have been lot of studies undertaken in the past on factors affect
 #Reading datafile
 Life_Expectancy_Df <- read.csv("/Users/suchismitamoharana/Documents/SMU/DS\ 6372/datasets-12603-17232-Life\ Expectancy\ Data.csv", header=TRUE, stringsAsFactors = FALSE)
 Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping ony 2014 data as per requirement
+gg_miss_var(Life_Expectancy_Df_2014)
+
 ```
 
 
@@ -32,7 +37,6 @@ Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping
 #### 2.Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
 
 ```{r}
-
 
 
 ```
