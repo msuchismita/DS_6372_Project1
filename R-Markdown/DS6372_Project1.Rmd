@@ -189,14 +189,20 @@ Set of predictors from previous regression: (fill this out)
 
 ```
 
+# EDA
+
+## Suchi's EDA
+
+```{r}
+
+```
 
 
+## Jamie's EDA
 
+```{r}
 
-
-
-
-
+```
 
 
 
