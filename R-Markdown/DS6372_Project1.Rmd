@@ -2,6 +2,7 @@
 title: "DS 6372 Project 1"
 output: html_document
 ---
+# World Health Organization
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
@@ -18,8 +19,8 @@ library(naniar)
 Although there have been lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition and mortality rates. It was found that affect of immunization and human development index was not taken into account in the past. Also, some of the past research was done considering multiple linear regression based on data set of one year for all the countries. Hence, this gives motivation to resolve both the factors stated previously by formulating a regression model based on mixed effects model and multiple linear regression while considering data from a period of 2000 to 2015 for all the countries. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. In a nutshell, this study will focus on immunization factors, mortality factors, economic factors, social factors and other health related factors as well. Since the observations this dataset are based on different countries, it will be easier for a country to determine the predicting factor which is contributing to lower value of life expectancy. This will help in suggesting a country which area should be given importance in order to efficiently improve the life expectancy of its population.
 
 ```{r}
-#Reading datafile
-Life_Expectancy_Df <- read.csv("/Users/suchismitamoharana/Documents/SMU/DS\ 6372/datasets-12603-17232-Life\ Expectancy\ Data.csv", header=TRUE, stringsAsFactors = FALSE)
+# Reading datafile
+Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
 Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping ony 2014 data as per requirement
 gg_miss_var(Life_Expectancy_Df_2014)
 
@@ -93,5 +94,123 @@ ggplot(Life_Expectancy_Df_2014, aes(x = Alcohol, y = Adult.Mortality)) +  geom_p
 
 
 ```
+
+
+
+## Objective 1
+Display the ability to build regression models using the skills and discussions from Unit 1 and 2 with the purpose of identifying key relationships, interpreting those relationships, and making good predictions.  
+
+*Reminder, key here is to tell a good story.*
+
+### Build  Model 1
+- identify key relationships
+- ensure interpretability
+
+1. Perform regression analysis
+```{r}
+
+```
+2. Report predictive ability
+  a. test/train set
+  b. CV data
+```{r}
+
+```
+
+3. Hypothesis Testing
+```{r}
+
+```
+
+4. Interpret the coefficients
+```{r}
+
+```
+
+5. Confidence intervals
+```{r}
+
+```
+
+6. Practical and statistical significance
+```{r}
+
+```
+
+### Model 2
+
+- product the best predictions as possible
+- interpretation is no longer required, hence complexity is no longer an issue
+
+1. Feature selection to avoid overfitting
+
+```{r}
+
+```
+
+2. Create the model
+
+```{r}
+
+```
+
+3. Compare model 1 vs. model 2
+
+```{r}
+
+```
+
+4. Comment on the differences of the models and whether model 2 brings any benefit
+
+
+
+
+## Objective 2
+- nonparametric technique
+- kNN or regression trees (select one)
+
+Set of predictors from previous regression: (fill this out)
+
+1.  Model
+```{r}
+
+```
+
+2.	A brief description of your nonparametric model’s strategy to make a prediction.  Include Pros and Cons.
+```{r}
+
+```
+3.	Provide any additional details that you feel might be necessary to report.
+```{r}
+
+```
+4.	Report the test ASE using this nonparametric model so we can see how well it does compared to regression.
+```{r}
+
+```
+
+# EDA
+
+## Suchi's EDA
+
+```{r}
+
+```
+
+
+## Jamie's EDA
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
 
 
