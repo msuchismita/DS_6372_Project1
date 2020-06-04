@@ -68,11 +68,8 @@ gg_miss_var(Life_Expectancy_Df_2014)
 
 #### 6.Does Life Expectancy have positive or negative relationship with drinking alcohol?
 
-The below graph suggests that there is no linear relationship between drinking alcohol and Life Expectancy.
 
 ```{r}
-
-ggplot(Life_Expectancy_Df_2014, aes(x = Alcohol, y = Adult.Mortality)) +  geom_point()
 
 
 ```
@@ -103,16 +100,16 @@ Display the ability to build regression models using the skills and discussions 
 *Reminder, key here is to tell a good story.*
 
 ### Build  Model 1
-- identify key relationships
-- ensure interpretability
+  - Identify key relationships
+  - Ensure interpretability
 
 1. Perform regression analysis
 ```{r}
 
 ```
 2. Report predictive ability
-  a. test/train set
-  b. CV data
+    a. Test/train set
+    b. CV data
 ```{r}
 
 ```
@@ -139,8 +136,8 @@ Display the ability to build regression models using the skills and discussions 
 
 ### Model 2
 
-- product the best predictions as possible
-- interpretation is no longer required, hence complexity is no longer an issue
+    - Product the best predictions as possible
+    - Interpretation is no longer required, hence complexity is no longer an issue
 
 1. Feature selection to avoid overfitting
 
@@ -166,8 +163,8 @@ Display the ability to build regression models using the skills and discussions 
 
 
 ## Objective 2
-- nonparametric technique
-- kNN or regression trees (select one)
+    - Nonparametric technique
+    - kNN or regression trees (select one)
 
 Set of predictors from previous regression: (fill this out)
 
@@ -194,6 +191,63 @@ Set of predictors from previous regression: (fill this out)
 ## Suchi's EDA
 
 ```{r}
+
+##############
+
+#1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
+
+#ggplot(Life_Expectancy_Df_2014, aes (x = Life.expectancy , y = Country )) +  geom_col()  + ylab("Country Name ") + xlab("Life Expectancy") +  ggtitle("Distribution of Life Expectancy for country") + theme(axis.text.x = element_text(angle=90,hjust=1))
+
+
+ggplot(Life_Expectancy_Df_2014, aes(x = Status , y = Life.expectancy )) +  geom_boxplot()  + xlab("Country's Status ") + ylab("Life Expectancy") +  ggtitle("Distribution of Life Expectancy for Developing vs Developed country") 
+
+
+ggplot(Life_Expectancy_Df_2014, aes(x = infant.deaths, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Adult.Mortality, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = infant.deaths, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Alcohol, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = percentage.expenditure, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x =  BMI , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = under.five.deaths , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Polio, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Total.expenditure, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x =  HIV.AIDS , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = GDP , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Population , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x =  thinness..1.19.years , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x =  thinness.5.9.years , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Income.composition.of.resources , y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Schooling , y = Life.expectancy )) +  geom_point()
+
+
+##############
+
+#2.Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
+#We need to divide the data into 2 categories like >65 and <65 to compare if total expenditure has significant impact on life expectancy.
+
+Life_Expectancy_Df_2014 <- add_column(Life_Expectancy_Df_2014,  Life.expectancy = "Low", .after = "Schooling")
+Life_Expectancy_Df_2014 <- Life_Expectancy_Df_2014 %>% mutate(Life.expectancy.1 = replace(Life.expectancy.1, Life.expectancy >= 65.0, "High"))
+
+ggplot(Life_Expectancy_Df_2014, aes(x = Life.expectancy.1 , y = Total.expenditure )) +  geom_boxplot()  + xlab("Life Expectancy (More than 65 vs Less than 65) ") + ylab("Healthcare expenditure amount") +  ggtitle("Distribution of Healthcare expenditure for low vs high life expectancy") 
+
+##############
+
+
+#3.How does Infant and Adult mortality rates affect life expectancy?
+
+ggplot(Life_Expectancy_Df_2014, aes(x = infant.deaths, y = Life.expectancy )) +  geom_point()
+ggplot(Life_Expectancy_Df_2014, aes(x = Adult.Mortality, y = Life.expectancy )) +  geom_point()
+
+
+##############
+
+
+#4.Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
+
+
 
 ```
 
