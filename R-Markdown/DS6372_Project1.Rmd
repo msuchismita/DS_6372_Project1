@@ -12,6 +12,8 @@ library(dplyr)
 library(GGally)
 library(tidyverse)
 library(naniar)
+library(zoom)
+library(MASS)
 ```
 
 ## Context
@@ -253,9 +255,74 @@ ggplot(Life_Expectancy_Df_2014, aes(x = Adult.Mortality, y = Life.expectancy )) 
 
 
 ## Jamie's EDA
+---
+
+Linear correlations: 
+- Schooling vs Income.composition.of.resource
+- thinness..1.19.years vs thinness.5.9.years
+- life exp. vs schooling
+- life exp. vs income
+- infant death vs under 5 death
+
+removed variables that were correlated
+
 
 ```{r}
+# print out summary for data
+  summary (Life_Expectancy_Df_2014)
 
+# matrix grid to determine correlated variables
+  colnames(Life_Expectancy_Df_2014)
+  pairs(Life_Expectancy_Df_2014[,c(4:9)])
+  pairs(Life_Expectancy_Df_2014[,10:15])
+  pairs(Life_Expectancy_Df_2014[,16:22])
+
+# narrowed matrix without correlated variables
+  ggpairs(Life_Expectancy_Df_2014[,c(4:5, 7:19, 22)],
+        main = "WHO Data",
+        pch = 10,
+        aes(colour=Life_Expectancy_Df_2014$Status))
+```
+
+#### Regression Testing/Variables Reduction
+---
+Forward, backward, and stepwise regressions were run and all 3 resulted with the same 4 significant variables.
+
+Variables
+- Adult.Mortality  
+- Total.expenditure
+- HIV.AIDS 
+- Income.composition.of.resources
+
+
+```{r}
+# regression selections
+  
+  # ETL
+    # dummy code (developing = 1, developed = 0)
+      values <- c(0, 1)
+      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+  # Fit the full model 
+    full.model <- lm(Life.expectancy ~., data = df1_complete)
+    # Stepwise regression model
+      step.model <- stepAIC(full.model, direction = "both", 
+                        trace = FALSE)
+      summary(step.model)
+    # forward regression model
+      foward.model <- stepAIC(full.model, direction = "forward", 
+                        trace = FALSE)
+      summary(foward.model)
+    # backward regression model
+      backward.model <- stepAIC(full.model, direction = "backward", 
+                        trace = FALSE)
+      summary(backward.model)
+    
+
+    
 ```
 
 
