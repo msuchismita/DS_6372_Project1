@@ -321,7 +321,6 @@ Variables
                         trace = FALSE)
       summary(backward.model)
     
-
     
 ```
 
