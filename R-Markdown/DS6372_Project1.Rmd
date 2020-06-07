@@ -14,6 +14,7 @@ library(tidyverse)
 library(naniar)
 library(zoom)
 library(MASS)
+library(plotly)
 ```
 
 ## Context
@@ -31,9 +32,45 @@ gg_miss_var(Life_Expectancy_Df_2014)
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
 
+After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy. 
+
+Variables
+- Adult.Mortality  
+- infant deaths
+- Total.expenditure
+- HIV.AIDS 
+- Income.composition.of.resources
+
+While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
+
 ```{r}
 
-
+  # ETL
+    # dummy code (developing = 1, developed = 0)
+      values <- c(0, 1)
+      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+  # Fit the full model 
+    full.model <- lm(Life.expectancy ~., data = df1_complete)
+    # Stepwise regression model
+      step.model <- stepAIC(full.model, direction = "both", 
+                        trace = FALSE)
+      summary(step.model)
+    # forward regression model
+      foward.model <- stepAIC(full.model, direction = "forward", 
+                        trace = FALSE)
+      summary(foward.model)
+    # backward regression model
+      backward.model <- stepAIC(full.model, direction = "backward", 
+                        trace = FALSE)
+      summary(backward.model)
+      
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(full.model)
 
 ```
 
@@ -62,35 +99,137 @@ gg_miss_var(Life_Expectancy_Df_2014)
 
 #### 5.What is the impact of schooling on the lifespan of humans?
 
+Life expectancy and schooling have a positive linear relationship. Despite not being significant in the full model, schooling is a significant indicator when its modeled as a singly linear regression. 
+
+The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression below:
+
+                          life expectancy = 38.72 + 2.51(schooling)
+
+We notice that as schooling increases by a year, life expectancy is increased by 2.5 years, with no schooling having a life expectancy of 38.72 years.
+
 ```{r}
 
+# linear model
+school.model <- lm(Life.expectancy ~Schooling, data = df1_complete)
 
+# summary statistics of schooling vs. life expectancy
+summary(school.model)
+
+# graph the regession 
+p.school <- ggplot(Life_Expectancy_Df_2014, aes(x =  Schooling , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.school)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(school.model)
 
 ```
 
 #### 6.Does Life Expectancy have positive or negative relationship with drinking alcohol?
 
 
-```{r}
+Life expectancy has a slight positive increase with alcohol consumption. 
 
+                          life expectancy = 67.11 + 1.11(Alcohol)
+
+Notice that as alcohol consumption incrases, life expectancy incrases by 1.11 years, starting at 67.11 years expected if no alcohol is consumed. 
+
+This is a bit counter intuitive considering the knowledge that alcohol is not considered to be healthy and many studies suggest that alcohol could shorten life spans. Keeping this in coonsideration, additional studies may need to be conducted. 
+```{r}
+# linear model
+alcohol.model <- lm(Life.expectancy ~Alcohol, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(alcohol.model)
+
+# graph the regession 
+p.alcohol <- ggplot(Life_Expectancy_Df_2014, aes(x =  Alcohol , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.alcohol)
+
+par(mfrow = c(2, 2))
+plot(alcohol.model)
 
 ```
 
 #### 7.Do densely populated countries tend to have lower life expectancy?
+Initally, there is a significant outlier that skews the data dramatically. Once removed, we noticed the sloped droped by nearly 50%. Considering that there is the possibility of having significanlt high populations, it has been concluded to keep the data point in.
 
+                          life expectancy = 70.58 - 2.65(Population)
+
+Notice that as the population in a country increases, life expectancy decreases by 2.65 years, starting at 70.58 years expected if there is no population. In this scenario, the intercept independent of the slope has no logical reasoning considering that no population would result in no life expectancy.
 
 ```{r}
 
+# linear model
+popultion.model <- lm(Life.expectancy ~Population, data = df1_complete)
 
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model)
+
+# graph the regession 
+p.population <- ggplot(Life_Expectancy_Df_2014, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model)
+
+
+# remove the outlier
+
+attach(df1_complete)
+
+# sort by mpg
+
+newdata <- df1_complete %>% arrange(desc(Population))
+
+# drop outlier
+newdata = newdata[-1,]
+
+# linear model
+popultion.model2 <- lm(Life.expectancy ~Population, data = newdata)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model2)
+
+# graph the regession 
+p.population2 <- ggplot(newdata, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population2)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model2)
 
 ```
 
 #### 8.What is the impact of Immunization coverage on life Expectancy?
-
+Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
 
 ```{r}
 
+# list of immunizations
+df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
 
+# linear model
+immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+
+# summary statistics of schooling vs. life expectancy
+summary(immunization.model)
+
+# graph the regession 
+require(gridExtra)
+
+p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
+p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+
+grid.arrange(p1, p2, p3, p4, ncol=2)
+
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(immunization.model)
 
 ```
 
@@ -290,6 +429,7 @@ Forward, backward, and stepwise regressions were run and all 3 resulted with the
 
 Variables
 - Adult.Mortality  
+- infant deaths
 - Total.expenditure
 - HIV.AIDS 
 - Income.composition.of.resources
@@ -323,14 +463,123 @@ Variables
     
     
 ```
+#### 5.What is the impact of schooling on the lifespan of humans?
+
+
+```{r}
+# linear model
+school.model <- lm(Life.expectancy ~Schooling, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(school.model)
+
+# graph the regession 
+p.school <- ggplot(Life_Expectancy_Df_2014, aes(x =  Schooling , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.school)
+
+par(mfrow = c(2, 2))
+plot(school.model)
+
+```
+
+#### 6.Does Life Expectancy have positive or negative relationship with drinking alcohol?
+
+Life expectancy has a slight positive increase with alcohol consumption. 
+```{r}
+# linear model
+alcohol.model <- lm(Life.expectancy ~Alcohol, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(alcohol.model)
+
+# graph the regession 
+p.alcohol <- ggplot(Life_Expectancy_Df_2014, aes(x =  Alcohol , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.alcohol)
+
+par(mfrow = c(2, 2))
+plot(alcohol.model)
+
+```
+
+#### 7.Do densely populated countries tend to have lower life expectancy?
+
+
+```{r}
+
+# linear model
+popultion.model <- lm(Life.expectancy ~Population, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model)
+
+# graph the regession 
+p.population <- ggplot(Life_Expectancy_Df_2014, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model)
+
+
+# remove the outlier
+
+attach(df1_complete)
+
+# sort by mpg
+
+newdata <- df1_complete %>% arrange(desc(Population))
+
+# drop outlier
+newdata = newdata[-1,]
+
+# linear model
+popultion.model2 <- lm(Life.expectancy ~Population, data = newdata)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model2)
+
+# graph the regession 
+p.population2 <- ggplot(newdata, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population2)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model2)
+
+```
+
+#### 8.What is the impact of Immunization coverage on life Expectancy?
+
+Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
+
+```{r}
+
+# list of immunizations
+df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
+
+# linear model
+immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+
+# summary statistics of schooling vs. life expectancy
+summary(immunization.model)
+
+# graph the regession 
+require(gridExtra)
+
+p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
+p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+
+grid.arrange(p1, p2, p3, p4, ncol=2)
+
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(immunization.model)
 
 
 
-
-
-
-
-
-
+```
 
 
