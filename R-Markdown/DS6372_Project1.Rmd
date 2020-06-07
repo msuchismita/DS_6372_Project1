@@ -244,6 +244,11 @@ Display the ability to build regression models using the skills and discussions 
   - Identify key relationships
   - Ensure interpretability
 
+Unit 2 Objectives:
+- bias vs. variance
+- complexity 
+- LASSO, LARS, CV (cross validation)
+
 1. Perform regression analysis
 ```{r}
 
