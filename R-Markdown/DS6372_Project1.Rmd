@@ -21,6 +21,30 @@ library(plotly)
 
 Although there have been lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition and mortality rates. It was found that affect of immunization and human development index was not taken into account in the past. Also, some of the past research was done considering multiple linear regression based on data set of one year for all the countries. Hence, this gives motivation to resolve both the factors stated previously by formulating a regression model based on mixed effects model and multiple linear regression while considering data from a period of 2000 to 2015 for all the countries. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. In a nutshell, this study will focus on immunization factors, mortality factors, economic factors, social factors and other health related factors as well. Since the observations this dataset are based on different countries, it will be easier for a country to determine the predicting factor which is contributing to lower value of life expectancy. This will help in suggesting a country which area should be given importance in order to efficiently improve the life expectancy of its population.
 
+*Column Names: Meanings*
+
+- Year: Year
+- Status: Developed or Developing status
+- Life expectancy: Life Expectancy in age
+- Adult Mortality: Adult Mortality Rates of both sexes (probability of dying between 15 and 60 years per 1000 population)
+- infant deaths: Number of Infant Deaths per 1000 population
+- Alcohol: Alcohol, recorded per capita (15+) consumption (in litres of pure alcohol)
+- percentage expenditure: Expenditure on health as a percentage of Gross Domestic Product per capita(%)
+- Hepatitis B: Hepatitis B (HepB) immunization coverage among 1-year-olds (%)
+- Measles:Measles - number of reported cases per 1000 population
+- BMI: Average Body Mass Index of entire population
+- Polio: Polio (Pol3) immunization coverage among 1-year-olds (%)
+- Total expenditure: General government expenditure on health as a percentage of total government expenditure (%)
+- Diphtheria: Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage among 1-year-olds (%)
+- HIV/AIDS: Deaths per 1 000 live births HIV/AIDS (0-4 years)
+- GDP: Gross Domestic Product per capita (in USD)
+- Population: Population of the country
+- thinness 1-19 years: Prevalence of thinness among children and adolescents for Age 10 to 19 (%)
+- thinness 5-9 years: Prevalence of thinness among children for Age 5 to 9(%)
+- income composition of resources: Human Development Index in terms of income composition of resources (index ranging from 0 to 1)
+- schooling: Number of years of Schooling(years)
+
+
 ```{r}
 # Reading datafile
 Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
@@ -205,6 +229,9 @@ plot(popultion.model2)
 #### 8.What is the impact of Immunization coverage on life Expectancy?
 Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
 
+
+!!!!!!!!!!! Additional EDA!!!!!!!!!!!!!!!!
+
 ```{r}
 
 # list of immunizations
@@ -305,7 +332,9 @@ Unit 2 Objectives:
 
 4. Comment on the differences of the models and whether model 2 brings any benefit
 
+```{r}
 
+```
 
 
 ## Objective 2
@@ -557,13 +586,19 @@ plot(popultion.model2)
 
 Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
 
+!!! Testing !!!
+- interaction terms
+- awknowledge polio significance
+
 ```{r}
 
 # list of immunizations
-df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
+df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Polio", "Diphtheria")
+df_immunizations$log.Hepatitis.B = log(df_immunizations$Hepatitis.B)
+df_immunizations$log.Life.expectancy = log(df_immunizations$Life.expectancy)
 
 # linear model
-immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+immunization.model <- lm(log.Life.expectancy ~log.Hepatitis.B, data = df_immunizations)
 
 # summary statistics of schooling vs. life expectancy
 summary(immunization.model)
@@ -571,12 +606,11 @@ summary(immunization.model)
 # graph the regession 
 require(gridExtra)
 
-p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+p1 <- ggplot(df_immunizations, aes(x = log.Hepatitis.B , y = log.Life.expectancy )) +  geom_point()
 p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
-p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
 p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
 
-grid.arrange(p1, p2, p3, p4, ncol=2)
+grid.arrange(p1, p2, p4, ncol=2)
 
 
 # assumptions testing
