@@ -15,6 +15,8 @@ library(naniar)
 library(zoom)
 library(MASS)
 library(plotly)
+library(ggpubr)
+library(onewaytests)
 ```
 
 ## Context
@@ -48,7 +50,7 @@ Although there have been lot of studies undertaken in the past on factors affect
 ```{r}
 # Reading datafile
 Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
-Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping ony 2014 data as per requirement
+Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
 gg_miss_var(Life_Expectancy_Df_2014)
 
 ```
@@ -406,15 +408,102 @@ ggplot(Life_Expectancy_Df_2014, aes(x = Schooling , y = Life.expectancy )) +  ge
 Life_Expectancy_Df_2014 <- add_column(Life_Expectancy_Df_2014,  Life.expectancy = "Low", .after = "Schooling")
 Life_Expectancy_Df_2014 <- Life_Expectancy_Df_2014 %>% mutate(Life.expectancy.1 = replace(Life.expectancy.1, Life.expectancy >= 65.0, "High"))
 
-ggplot(Life_Expectancy_Df_2014, aes(x = Life.expectancy.1 , y = Total.expenditure )) +  geom_boxplot()  + xlab("Life Expectancy (More than 65 vs Less than 65) ") + ylab("Healthcare expenditure amount") +  ggtitle("Distribution of Healthcare expenditure for low vs high life expectancy") 
+      ggplot(Life_Expectancy_Df_2014, aes(x = Life.expectancy.1 , y = Total.expenditure )) +  geom_boxplot()  + xlab("Life Expectancy (More than 65 vs Less than 65) ") + ylab("Govt expenditure on health as a % of total govt expenditure") + ggtitle("Distribution of Healthcare expenditure for low vs high life expectancy") 
+      
+      ggplot(Life_Expectancy_Df_2014, aes(x = Life.expectancy.1 , y = percentage.expenditure )) +  geom_boxplot()  + xlab("Life Expectancy (More than 65 vs Less than 65) ") + ylab("Expenditure on health as a % of GDP per capita") +  ggtitle("Distribution of Healthcare expenditure for low vs high life expectancy") 
 
+
+      data_Total.expenditure <- group_by(Life_Expectancy_Df_2014, Life.expectancy.1) %>%
+        summarise(
+          count = n(),
+          mean = mean(Total.expenditure, na.rm = TRUE),
+          sd = sd(Total.expenditure, na.rm = TRUE)
+        )
+      
+      summary(data_Total.expenditure)
+      
+      data_percentage.expenditure <- group_by(Life_Expectancy_Df_2014, Life.expectancy.1) %>%
+        summarise(
+          count = n(),
+          mean = mean(percentage.expenditure, na.rm = TRUE),
+          sd = sd(percentage.expenditure, na.rm = TRUE)
+        )
+      
+      summary(data_percentage.expenditure)
+
+ ggqqplot(Life_Expectancy_Df_2014$percentage.expenditure)
+ ggqqplot(Life_Expectancy_Df_2014$Total.expenditure)
+   
+      
+  #Equality of variance test for Total.expenditure and percentage.expenditure
+      res.ftest <- var.test(Total.expenditure ~ Life.expectancy.1 , data = Life_Expectancy_Df_2014)
+      res.ftest
+
+      res.ftest1 <- var.test(percentage.expenditure ~ Life.expectancy.1 , data = Life_Expectancy_Df_2014)
+      res.ftest1
+      
+  #Two Sample T-test / Welch's T-test to find out if the difference we see in EDA actually make sense.
+  
+    #Two Sample T-test for Total.expenditure variable as there was no significant evidence of differing standard deviation      
+        res.total.expenditure <- t.test(Total.expenditure ~ Life.expectancy.1 , data = Life_Expectancy_Df_2014, var.equal = TRUE)
+        res.total.expenditure
+        
+    #Welch's T-test for percentage.expenditure variable as there was significant evidence of differing standard deviation      
+        welch.test(percentage.expenditure ~ Life.expectancy.1, Life_Expectancy_Df_2014, rate = 0, alpha = 0.05, na.rm = TRUE, verbose = TRUE)
+  
+
+#However I have question on the data. If the definition of percentage expenditure is Expenditure on health as a percentage of Gross Domestic Product per capita(%), then how come it is so high (More than 100%). I do not have domain knowledge. Data suggests that it has impact but is the data accurate? 
+      
+      
+#So I will filter all records where percentage is more than 100 and will fit the model again.
+        Life_Expectancy_Df_2014_percentage.expenditure <- Life_Expectancy_Df_2014 %>% filter(percentage.expenditure <  100)  
+
+        data_percentage.expenditure1 <- group_by(Life_Expectancy_Df_2014_percentage.expenditure, Life.expectancy.1) %>%
+          summarise(
+            count = n(),
+            mean = mean(percentage.expenditure, na.rm = TRUE),
+            sd = sd(percentage.expenditure, na.rm = TRUE)
+          )
+
+        summary(data_percentage.expenditure1)
+
+  # Normality check
+        ggqqplot(Life_Expectancy_Df_2014_percentage.expenditure$Total.expenditure) 
+      
+  # Equality of variance check
+        res.ftest2 <- var.test(Total.expenditure ~ Life.expectancy.1 , data = Life_Expectancy_Df_2014_percentage.expenditure) 
+        res.ftest2
+   
+        #Two Sample T-test for Total.expenditure variable(after removing data where percentage value is more than 100) as there was no significant evidence of differing standard deviation      
+
+        res.percentage.expenditure <- t.test(percentage.expenditure ~ Life.expectancy.1, data = Life_Expectancy_Df_2014_percentage.expenditure, var.equal = TRUE)
+        res.percentage.expenditure
+
+# We did not get statistically signifcant result. So, this is not related.      
+      
+        
+        
+     
+
+
+
+        
 ##############
 
 
 #3.How does Infant and Adult mortality rates affect life expectancy?
 
-ggplot(Life_Expectancy_Df_2014, aes(x = infant.deaths, y = Life.expectancy )) +  geom_point()
-ggplot(Life_Expectancy_Df_2014, aes(x = Adult.Mortality, y = Life.expectancy )) +  geom_point()
+
+  #From EDA we can see that infant.deaths is not related to Life.expectancy. Hence fitting the model on Adult.Mortality rate.
+      my.model.Adult.Mortality<-lm (Life.expectancy~Adult.Mortality , data = Life_Expectancy_Df_2014 )
+      summary(my.model.Adult.Mortality)
+      par(mfrow=c(1,2))
+      plot(my.model.Adult.Mortality$fitted.values,my.model.Adult.Mortality$residuals,xlab="Fitted Values",ylab="Residuals")
+      qqnorm(my.model.Adult.Mortality$residuals)
+      qqline(my.model.Adult.Mortality$residuals)
+
+#And from the linear regression model, we can see that Adult mortality rate is negatively related to life expectancy.
+
 
 
 ##############
@@ -422,6 +511,23 @@ ggplot(Life_Expectancy_Df_2014, aes(x = Adult.Mortality, y = Life.expectancy )) 
 
 #4.Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
 
+  #We assume that BMI rate is related to lifestyle, eating habits, exercise. Since we see a positive co-relation of BMI with Life Expectancy, we assume that with good eating habits, ample exercice and healthy lifestyle life expectancy would be more.
+
+      my.model.BMI<-lm (Life.expectancy~BMI , data = Life_Expectancy_Df_2014 )
+      summary(my.model.BMI)
+      par(mfrow=c(1,2))
+      plot(my.model.BMI$fitted.values,my.model.BMI$residuals,xlab="Fitted Values",ylab="Residuals")
+      qqnorm(my.model.BMI$residuals)
+      qqline(my.model.BMI$residuals)
+
+
+  # Alcohol seems to have positive corelation with life expectancy with a slope of 1.0732.
+      my.model.Alcohol<-lm (Life.expectancy~Alcohol , data = Life_Expectancy_Df_2014 )
+      summary(my.model.Alcohol)
+      par(mfrow=c(1,2))
+      plot(my.model.Alcohol$fitted.values,my.model.Alcohol$residuals,xlab="Fitted Values",ylab="Residuals")
+      qqnorm(my.model.Alcohol$residuals)
+      qqline(my.model.Alcohol$residuals)
 
 
 ```
