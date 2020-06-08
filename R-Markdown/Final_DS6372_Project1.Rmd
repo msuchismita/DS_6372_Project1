@@ -1,0 +1,331 @@
+---
+title: "Final WHO"
+author: "Jamie Vo"
+date: "6/7/2020"
+output: html_document
+---
+
+# World Health Organization
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(GGally)
+library(tidyverse)
+library(naniar)
+library(zoom)
+library(MASS)
+library(plotly)
+```
+
+## Context
+
+Although there have been lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition and mortality rates. It was found that affect of immunization and human development index was not taken into account in the past. Also, some of the past research was done considering multiple linear regression based on data set of one year for all the countries. Hence, this gives motivation to resolve both the factors stated previously by formulating a regression model based on mixed effects model and multiple linear regression while considering data from a period of 2000 to 2015 for all the countries. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. In a nutshell, this study will focus on immunization factors, mortality factors, economic factors, social factors and other health related factors as well. Since the observations this dataset are based on different countries, it will be easier for a country to determine the predicting factor which is contributing to lower value of life expectancy. This will help in suggesting a country which area should be given importance in order to efficiently improve the life expectancy of its population.
+
+```{r}
+# Reading datafile
+Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
+Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping ony 2014 data as per requirement
+gg_miss_var(Life_Expectancy_Df_2014)
+
+```
+
+
+#### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
+
+After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy. 
+
+Variables
+- Adult.Mortality  
+- infant deaths
+- Total.expenditure
+- HIV.AIDS 
+- Income.composition.of.resources
+
+While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
+
+```{r}
+
+  # ETL
+    # dummy code (developing = 1, developed = 0)
+      values <- c(0, 1)
+      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+  # Fit the full model 
+    full.model <- lm(Life.expectancy ~., data = df1_complete)
+    # Stepwise regression model
+      step.model <- stepAIC(full.model, direction = "both", 
+                        trace = FALSE)
+      summary(step.model)
+    # forward regression model
+      foward.model <- stepAIC(full.model, direction = "forward", 
+                        trace = FALSE)
+      summary(foward.model)
+    # backward regression model
+      backward.model <- stepAIC(full.model, direction = "backward", 
+                        trace = FALSE)
+      summary(backward.model)
+      
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(full.model)
+
+```
+
+#### 2.Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
+
+```{r}
+
+
+```
+
+#### 3.How does Infant and Adult mortality rates affect life expectancy?
+
+```{r}
+
+
+
+```
+
+#### 4.Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
+
+```{r}
+
+
+
+```
+
+#### 5.What is the impact of schooling on the lifespan of humans?
+
+Life expectancy and schooling have a positive linear relationship. Despite not being significant in the full model, schooling is a significant indicator when its modeled as a singly linear regression. 
+
+The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression below:
+
+                          life expectancy = 38.72 + 2.51(schooling)
+
+We notice that as schooling increases by a year, life expectancy is increased by 2.5 years, with no schooling having a life expectancy of 38.72 years.
+
+```{r}
+
+# linear model
+school.model <- lm(Life.expectancy ~Schooling, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(school.model)
+
+# graph the regession 
+p.school <- ggplot(Life_Expectancy_Df_2014, aes(x =  Schooling , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.school)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(school.model)
+
+```
+
+#### 6.Does Life Expectancy have positive or negative relationship with drinking alcohol?
+
+
+Life expectancy has a slight positive increase with alcohol consumption. 
+
+                          life expectancy = 67.11 + 1.11(Alcohol)
+
+Notice that as alcohol consumption incrases, life expectancy incrases by 1.11 years, starting at 67.11 years expected if no alcohol is consumed. 
+
+This is a bit counter intuitive considering the knowledge that alcohol is not considered to be healthy and many studies suggest that alcohol could shorten life spans. Keeping this in coonsideration, additional studies may need to be conducted. 
+```{r}
+# linear model
+alcohol.model <- lm(Life.expectancy ~Alcohol, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(alcohol.model)
+
+# graph the regession 
+p.alcohol <- ggplot(Life_Expectancy_Df_2014, aes(x =  Alcohol , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.alcohol)
+
+par(mfrow = c(2, 2))
+plot(alcohol.model)
+
+```
+
+#### 7.Do densely populated countries tend to have lower life expectancy?
+Initally, there is a significant outlier that skews the data dramatically. Once removed, we noticed the sloped droped by nearly 50%. Considering that there is the possibility of having significanlt high populations, it has been concluded to keep the data point in.
+
+                          life expectancy = 70.58 - 2.65(Population)
+
+Notice that as the population in a country increases, life expectancy decreases by 2.65 years, starting at 70.58 years expected if there is no population. In this scenario, the intercept independent of the slope has no logical reasoning considering that no population would result in no life expectancy.
+
+```{r}
+
+# linear model
+popultion.model <- lm(Life.expectancy ~Population, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model)
+
+# graph the regession 
+p.population <- ggplot(Life_Expectancy_Df_2014, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model)
+
+
+# remove the outlier
+
+attach(df1_complete)
+
+# sort by mpg
+
+newdata <- df1_complete %>% arrange(desc(Population))
+
+# drop outlier
+newdata = newdata[-1,]
+
+# linear model
+popultion.model2 <- lm(Life.expectancy ~Population, data = newdata)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model2)
+
+# graph the regession 
+p.population2 <- ggplot(newdata, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population2)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model2)
+
+```
+
+#### 8.What is the impact of Immunization coverage on life Expectancy?
+Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
+
+```{r}
+
+# list of immunizations
+df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
+
+# linear model
+immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+
+# summary statistics of schooling vs. life expectancy
+summary(immunization.model)
+
+# graph the regession 
+require(gridExtra)
+
+p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
+p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+
+grid.arrange(p1, p2, p3, p4, ncol=2)
+
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(immunization.model)
+
+```
+
+
+
+## Objective 1
+Display the ability to build regression models using the skills and discussions from Unit 1 and 2 with the purpose of identifying key relationships, interpreting those relationships, and making good predictions.  
+
+*Reminder, key here is to tell a good story.*
+
+### Build  Model 1
+  - Identify key relationships
+  - Ensure interpretability
+
+1. Perform regression analysis
+```{r}
+
+```
+2. Report predictive ability
+    a. Test/train set
+    b. CV data
+```{r}
+
+```
+
+3. Hypothesis Testing
+```{r}
+
+```
+
+4. Interpret the coefficients
+```{r}
+
+```
+
+5. Confidence intervals
+```{r}
+
+```
+
+6. Practical and statistical significance
+```{r}
+
+```
+
+### Model 2
+
+    - Product the best predictions as possible
+    - Interpretation is no longer required, hence complexity is no longer an issue
+
+1. Feature selection to avoid overfitting
+
+```{r}
+
+```
+
+2. Create the model
+
+```{r}
+
+```
+
+3. Compare model 1 vs. model 2
+
+```{r}
+
+```
+
+4. Comment on the differences of the models and whether model 2 brings any benefit
+
+
+
+
+## Objective 2
+    - Nonparametric technique
+    - kNN or regression trees (select one)
+
+Set of predictors from previous regression: (fill this out)
+
+1.  Model
+```{r}
+
+```
+
+2.	A brief description of your nonparametric model’s strategy to make a prediction.  Include Pros and Cons.
+```{r}
+
+```
+3.	Provide any additional details that you feel might be necessary to report.
+```{r}
+
+```
+4.	Report the test ASE using this nonparametric model so we can see how well it does compared to regression.
+```{r}
+
+```
