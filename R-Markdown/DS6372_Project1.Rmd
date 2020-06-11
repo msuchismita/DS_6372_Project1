@@ -47,6 +47,24 @@ Although there have been lot of studies undertaken in the past on factors affect
 - schooling: Number of years of Schooling(years)
 
 
+##### Functions utilized throughout the analysis
+
+```{r}
+
+# creates all required resisual plots
+
+    residual.plots <- function (model) {
+      par(mfrow = c(2, 3))
+      p1 <- plot(model)
+      p2 <- plot(model, 3)
+      p3 <- plot(model, 4)
+      return(list(p1, p2, p3))
+    }
+
+```
+
+
+
 ```{r}
 # Reading datafile
 Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
@@ -231,34 +249,71 @@ plot(popultion.model2)
 #### 8.What is the impact of Immunization coverage on life Expectancy?
 Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
 
-
-!!!!!!!!!!! Additional EDA!!!!!!!!!!!!!!!!
+1. linear regession is not applicable due to the fact that the data doesn't match the required assumptions.
+  - Fails constant variance
+2. log transformations also did not satisfy the required assumptions for regression
+  - Fails constant variance
+3. polynomial regression matched the required assumptions with a low R^2 (0.14) and high AIC (920)
 
 ```{r}
 
-# list of immunizations
-df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
+# 1. LINEAR REGRESSION
+    # list of immunizations
+    df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Polio", "Diphtheria")
+    
+    # linear model
+    immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+    
+    # summary statistics of schooling vs. life expectancy
+    summary(immunization.model)
+    
+    # graph the regession 
+    require(gridExtra)
+    
+    p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+    p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+    p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+    
+    grid.arrange(p1, p2, p3, ncol=2)
+    
+    # assumptions testing
+    
+    residual.plots(immunization.model)
 
-# linear model
-immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
-
-# summary statistics of schooling vs. life expectancy
-summary(immunization.model)
-
-# graph the regession 
-require(gridExtra)
-
-p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
-p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
-p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
-p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
-
-grid.arrange(p1, p2, p3, p4, ncol=2)
-
-
-# assumptions testing
-par(mfrow = c(2, 2))
-plot(immunization.model)
+# 2. LOG TRANSFORMATIONS
+    
+    # create logged transformations
+    df_immunizations$log.Life.expectancy <- log(df_immunizations$Life.expectancy)
+    df_immunizations$log.Hepatitis.B <- log(df_immunizations$Hepatitis.B)
+    
+    # log-log linear model
+    log.immunization.model <- lm(log.Life.expectancy ~log.Hepatitis.B, data = df_immunizations)
+    
+    # summary statistics
+    summary(log.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = log.Hepatitis.B , y = log.Life.expectancy )) +  geom_point()
+    
+    # residual plots
+    residual.plots(log.immunization.model)
+    
+# 3. POLYNOMIAL REGRESSION TESTING
+    # linear model
+    ploy.immunization.model <- lm(Life.expectancy ~Hepatitis.B+I(Hepatitis.B^2), data = df_immunizations)
+    
+    # summary statistics
+    summary(ploy.immunization.model)
+    AIC(ploy.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "loess", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with trend line")
+    
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with quadratic regression line")
+    
+    # residual plots
+    residual.plots(ploy.immunization.model)
+    
 
 ```
 
