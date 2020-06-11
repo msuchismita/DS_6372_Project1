@@ -218,7 +218,6 @@ ggplotly(p.population)
 par(mfrow = c(2, 2))
 plot(popultion.model)
 
-
 # remove the outlier
 
 attach(df1_complete)
@@ -305,6 +304,7 @@ Reviewing the graphs, there does not appear to be a significant relationship bet
     # summary statistics
     summary(ploy.immunization.model)
     AIC(ploy.immunization.model)
+    BIC(ploy.immunization.model)
     
     # graph regression
     ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "loess", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with trend line")
@@ -335,6 +335,78 @@ Unit 2 Objectives:
 
 1. Perform regression analysis
 ```{r}
+
+# LASSO 
+    x_vars <- model.matrix(Life.expectancy~. , df1_complete)[,-1]
+    y_var <- df1_complete$Life.expectancy
+    lambda_seq <- 10^seq(2, -2, by = -.1)
+     
+    # Splitting the data into test and train
+    set.seed(86)
+    train = sample(1:nrow(x_vars), nrow(x_vars)/2)
+    x_test = (-train)
+    y_test = y_var[x_test]
+     
+    cv_output <- cv.glmnet(x_vars[train,], y_var[train],
+                           alpha = 1, lambda = lambda_seq, 
+                           nfolds = 5)
+     
+    # identifying best lamda
+    best_lam <- cv_output$lambda.min
+    best_lam
+    
+    
+    # Rebuilding the model with best lamda value identified
+    lasso_best <- glmnet(x_vars[train,], y_var[train], alpha = 1, lambda = best_lam)
+    pred <- predict(lasso_best, s = best_lam, newx = x_vars[x_test,])
+    
+    # Inspecting beta coefficients
+    coef(lasso_best)
+    
+    install.packages('lars')
+    library(lars)
+    x <- df1_complete%>% select(-'Life.expectancy')
+    lars(x, df1_complete$Life.expectancy,type ="lasso")
+    
+    
+    
+    library(glmnet)
+    
+    ## set the seed to make your partition reproducible
+    smp_size <- floor(0.5 * nrow(df1_complete))
+    
+    set.seed(1234)
+    index <- sample(seq_len(nrow(df1_complete)), size = smp_size)
+    
+    train<-df1_complete[index,]
+    test<-df1_complete[-index,]
+
+    
+    #Formatting data for GLM net
+    x=model.matrix(Life.expectancy~.,train)[,-1]
+    y=log(train$Life.expectancy)
+    
+    xtest<-model.matrix(Life.expectancy~.,test)[,-1]
+    ytest<-log(test$Life.expectancy)
+    
+    
+    
+    grid=10^seq(10,-2, length =100)
+    lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+    
+    cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+    plot(cv.out)
+    bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+    lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+    
+    testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+    testMSE_LASSO
+    
+    coef(lasso.mod,s=bestlambda)
+    
+    summary(lasso.mod)
+  
+
 
 ```
 2. Report predictive ability
