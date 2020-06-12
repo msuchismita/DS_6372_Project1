@@ -88,7 +88,7 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
       Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
       Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
     # remove nulls
-      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      df1_no.nan <- na.omit(Life_Expectancy_Df_2014_dc) 
       
     # drop population column
       df1_drop <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
@@ -100,8 +100,8 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
         df_means[is.na(df_means[,i]), i] <- mean(df_means[,i], na.rm = TRUE)
       }
       sum(is.na(df_means))
-      df_means.condense <- df_means[,c(3:23)]
-
+      df1_complete <- df_means[,c(3:23)]
+      #df_means.condense <- df_means.condense %>% filter(df_means.condense$percentage.expenditure < 100)
 ```
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
@@ -109,11 +109,14 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
 After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy. 
 
 Variables
-- Adult.Mortality  
-- infant deaths
-- Total.expenditure
-- HIV.AIDS 
-- Income.composition.of.resources
+StatusDeveloping                -1.923054   
+Adult.Mortality                 -0.016917   
+infant.deaths                    0.086154   
+under.five.deaths               -0.067124   
+Total.expenditure                0.250440   
+Diphtheria                       0.028511   
+HIV.AIDS                        -1.020423   
+Income.composition.of.resources 27.870308
 
 While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
 
