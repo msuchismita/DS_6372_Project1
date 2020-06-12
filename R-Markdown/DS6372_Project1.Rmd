@@ -84,7 +84,11 @@ Although there have been lot of studies undertaken in the past on factors affect
       df1_complete <- na.omit(df1_complete) 
       
 # replace missing data wtih averages
-
+      df_means <- Life_Expectancy_Df_2014
+      for(i in 1:ncol(df_means)){
+        df_means[is.na(df_means[,i]), i] <- mean(df_means[,i], na.rm = TRUE)
+      }
+      sum(is.na(df_means))
 ```
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
