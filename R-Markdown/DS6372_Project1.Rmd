@@ -69,9 +69,23 @@ Although there have been lot of studies undertaken in the past on factors affect
 
 ```{r}
 # Reading datafile
-Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
-Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
-gg_miss_var(Life_Expectancy_Df_2014)
+      Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
+      Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
+      gg_miss_var(Life_Expectancy_Df_2014)
+
+# remove Nan rows
+    # dummy code (developing = 1, developed = 0)
+      values <- c(0, 1)
+      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+      #df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+    # drop population column
+      df1_complete <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
+      df1_complete <- na.omit(df1_complete) 
+      
+# replace missing data wtih averages
 
 ```
 
@@ -90,15 +104,6 @@ Variables
 While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
 
 ```{r}
-
-  # ETL
-    # dummy code (developing = 1, developed = 0)
-      values <- c(0, 1)
-      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
-      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
-    # remove nulls
-      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
-      
   # Fit the full model 
     full.model <- lm(Life.expectancy ~., data = df1_complete)
     # Stepwise regression model
@@ -416,7 +421,48 @@ While there were other variables that made the model (total expenditure, HIV.AID
 
 1. Feature selection to avoid overfitting
 
+A. Linear Regression
+  - model a: linear regression
+          life expectancy = 36.55 + 50.73(income)
+          Adjusted R^2 = 0.79
+  - model b: linear regression + adult mortality
+          life expectancy = 48.5 + 38.77(income) - 0.025 (adult mortality)
+          Adjusted R^2 = 0.84
+  - model c: linear regression + adult mortality + HIV.AIDS
+          life expectancy = 49.8 + 36.05 (income) - 0.016 (adult mortality) - 0.95 (HIV/AIDS)
+          Adjusted R^2 = 0.85
+B. Interaction Terms
+  - model d: linear regression + adult mortality + HIV.AIDS
+          
 ```{r}
+
+# Lasso model lasso.mod determined that income the primary predictor for life expectancy
+  # SIMPLE MODEL
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources, data = df1_complete)
+    # Stepwise regression model
+      simple.step.model <- stepAIC(simple.model, direction = "both", 
+                        trace = FALSE)
+      summary(simple.step.model)
+      
+  # ADDITION OF VARIABLES MODEL
+      # adult mortality
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality , data = df1_complete)
+    summary(simple.model)
+      
+      # Thinness 
+    df.expenditure <- df1_complete %>% filter(df1_complete$percentage.expenditure < 100)
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + Total.expenditure, data = df.expenditure)
+    summary(simple.model)
+      # AIDS
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS, data = df1_complete)
+    summary(simple.model)
+    
+  # Interaction terms
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS + (Adult.Mortality*HIV.AIDS) + (Income.composition.of.resources*Adult.Mortality) +(Income.composition.of.resources*HIV.AIDS), data = df1_complete)
+    summary(simple.model)
+    
+      
+      
 
 ```
 
