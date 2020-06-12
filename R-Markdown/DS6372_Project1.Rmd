@@ -604,7 +604,6 @@ ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  ge
 
 plot(rf)
 
-cm = table(test, pred)
 print(rf)
 
 # limited variables !!!!!!!!!!!!!!!!
