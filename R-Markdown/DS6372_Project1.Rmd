@@ -229,9 +229,11 @@ plot(alcohol.model)
 #### 7.Do densely populated countries tend to have lower life expectancy?
 Initally, there is a significant outlier that skews the data dramatically. Once removed, we noticed the sloped droped by nearly 50%. Considering that there is the possibility of having significanlt high populations, it has been concluded to keep the data point in.
 
-                          life expectancy = 70.58 - 2.65(Population)
+                          life expectancy = 71.71 - 1.12e-8(Population)
 
 Notice that as the population in a country increases, life expectancy decreases by 2.65 years, starting at 70.58 years expected if there is no population. In this scenario, the intercept independent of the slope has no logical reasoning considering that no population would result in no life expectancy.
+
+We notice again that the model fails constant variance, hence, the model cannot be utilized.
 
 ```{r}
 
