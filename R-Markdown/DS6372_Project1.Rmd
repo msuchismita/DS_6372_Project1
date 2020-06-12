@@ -450,6 +450,29 @@ Set of predictors from previous regression: (fill this out)
 
 
 # RANDOM FOREST
+# all variables
+rf <- randomForest(
+  Life.expectancy ~ .,
+  data=train
+)
+
+varImpPlot(rf)
+
+
+pred = predict(rf, newdata=test)
+pred.df <- as.data.frame(pred)
+pred.df$true <- test$Life.expectancy
+pred.df$idu <- as.numeric(row.names(pred.df))
+ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+
+plot(rf)
+
+cm = table(test, pred)
+print(rf)
+
+# limited variables !!!!!!!!!!!!!!!!
+
+train %>% select(Adult.Mortality,)
 
 rf <- randomForest(
   Life.expectancy ~ .,
