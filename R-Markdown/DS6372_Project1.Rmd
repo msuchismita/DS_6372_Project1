@@ -17,6 +17,8 @@ library(MASS)
 library(plotly)
 library(ggpubr)
 library(onewaytests)
+library(glmnet)
+library(randomForest)
 ```
 
 ## Context
@@ -48,13 +50,42 @@ Although there have been lot of studies undertaken in the past on factors affect
 
 
 ```{r}
-# Reading datafile
-Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
-Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
-gg_miss_var(Life_Expectancy_Df_2014)
+
+# creates all required resisual plots
+
+    residual.plots <- function (model) {
+      par(mfrow = c(2, 3))
+      p1 <- plot(model)
+      p2 <- plot(model, 3)
+      p3 <- plot(model, 4)
+      return(list(p1, p2, p3))
+    }
 
 ```
 
+
+
+```{r}
+# Reading datafile
+      Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
+      Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
+      gg_miss_var(Life_Expectancy_Df_2014)
+
+# remove Nan rows
+    # dummy code (developing = 1, developed = 0)
+      values <- c(0, 1)
+      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+      #df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+    # drop population column
+      df1_complete <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
+      df1_complete <- na.omit(df1_complete) 
+      
+# replace missing data wtih averages
+
+```
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
 
@@ -231,34 +262,71 @@ plot(popultion.model2)
 #### 8.What is the impact of Immunization coverage on life Expectancy?
 Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
 
-
-!!!!!!!!!!! Additional EDA!!!!!!!!!!!!!!!!
+1. linear regession is not applicable due to the fact that the data doesn't match the required assumptions.
+  - Fails constant variance
+2. log transformations also did not satisfy the required assumptions for regression
+  - Fails constant variance
+3. polynomial regression matched the required assumptions with a low R^2 (0.14) and high AIC (920)
 
 ```{r}
 
-# list of immunizations
-df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Measles", "Polio", "Diphtheria")
+# 1. LINEAR REGRESSION
+    # list of immunizations
+    df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Polio", "Diphtheria")
+    
+    # linear model
+    immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+    
+    # summary statistics of schooling vs. life expectancy
+    summary(immunization.model)
+    
+    # graph the regession 
+    require(gridExtra)
+    
+    p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+    p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+    p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+    
+    grid.arrange(p1, p2, p3, ncol=2)
+    
+    # assumptions testing
+    
+    residual.plots(immunization.model)
 
-# linear model
-immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
-
-# summary statistics of schooling vs. life expectancy
-summary(immunization.model)
-
-# graph the regession 
-require(gridExtra)
-
-p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
-p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
-p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Measles , y = Life.expectancy )) +  geom_point()
-p4 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
-
-grid.arrange(p1, p2, p3, p4, ncol=2)
-
-
-# assumptions testing
-par(mfrow = c(2, 2))
-plot(immunization.model)
+# 2. LOG TRANSFORMATIONS
+    
+    # create logged transformations
+    df_immunizations$log.Life.expectancy <- log(df_immunizations$Life.expectancy)
+    df_immunizations$log.Hepatitis.B <- log(df_immunizations$Hepatitis.B)
+    
+    # log-log linear model
+    log.immunization.model <- lm(log.Life.expectancy ~log.Hepatitis.B, data = df_immunizations)
+    
+    # summary statistics
+    summary(log.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = log.Hepatitis.B , y = log.Life.expectancy )) +  geom_point()
+    
+    # residual plots
+    residual.plots(log.immunization.model)
+    
+# 3. POLYNOMIAL REGRESSION TESTING
+    # linear model
+    ploy.immunization.model <- lm(Life.expectancy ~Hepatitis.B+I(Hepatitis.B^2), data = df_immunizations)
+    
+    # summary statistics
+    summary(ploy.immunization.model)
+    AIC(ploy.immunization.model)
+    BIC(ploy.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "loess", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with trend line")
+    
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with quadratic regression line")
+    
+    # residual plots
+    residual.plots(ploy.immunization.model)
 
 ```
 
@@ -279,7 +347,50 @@ Unit 2 Objectives:
 - LASSO, LARS, CV (cross validation)
 
 1. Perform regression analysis
+
+
+- LASSO
+Using the lasso regression method, the following were determined to be significant
+                          Income.composition.of.resources
+While there were other variables that made the model (total expenditure, HIV.AIDs, and BMI), their coefficients are extremely small and not considered to be significant.
 ```{r}
+
+# LASSO 
+    
+    ## set the seed to make your partition reproducible
+    smp_size <- floor(0.5 * nrow(df1_complete))
+    
+    set.seed(1234)
+    index <- sample(seq_len(nrow(df1_complete)), size = smp_size)
+    
+    train<-df1_complete[index,]
+    test<-df1_complete[-index,]
+
+    
+    #Formatting data for GLM net
+    x=model.matrix(Life.expectancy~.,train)[,-1]
+    y=(train$Life.expectancy)
+    
+    xtest<-model.matrix(Life.expectancy~.,test)[,-1]
+    ytest<-(test$Life.expectancy)
+    
+    
+    grid=10^seq(10,-2, length =100)
+    lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+    
+    cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+    plot(cv.out)
+    bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+    lasso.pred=predict(lasso.mod ,s=bestlambda ,newx=xtest)
+    
+    testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+    testMSE_LASSO
+    
+    coef(lasso.mod,s=bestlambda)
+    
+    summary(lasso.mod)
+  
+
 
 ```
 2. Report predictive ability
@@ -316,8 +427,47 @@ Unit 2 Objectives:
 
 1. Feature selection to avoid overfitting
 
+A. Linear Regression
+  - model a: linear regression
+          life expectancy = 36.55 + 50.73(income)
+          Adjusted R^2 = 0.79
+  - model b: linear regression + adult mortality
+          life expectancy = 48.5 + 38.77(income) - 0.025 (adult mortality)
+          Adjusted R^2 = 0.84
+  - model c: linear regression + adult mortality + HIV.AIDS
+          life expectancy = 49.8 + 36.05 (income) - 0.016 (adult mortality) - 0.95 (HIV/AIDS)
+          Adjusted R^2 = 0.85
+B. Interaction Terms
+  - model d: linear regression + adult mortality + HIV.AIDS
+          
 ```{r}
 
+# Lasso model lasso.mod determined that income the primary predictor for life expectancy
+  # SIMPLE MODEL
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources, data = df1_complete)
+    # Stepwise regression model
+      simple.step.model <- stepAIC(simple.model, direction = "both", 
+                        trace = FALSE)
+      summary(simple.step.model)
+      
+  # ADDITION OF VARIABLES MODEL
+      # adult mortality
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality , data = df1_complete)
+    summary(simple.model)
+      
+      # Thinness 
+    df.expenditure <- df1_complete %>% filter(df1_complete$percentage.expenditure < 100)
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + Total.expenditure, data = df.expenditure)
+    summary(simple.model)
+      # AIDS
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS, data = df1_complete)
+    summary(simple.model)
+    
+  # Interaction terms
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS + (Adult.Mortality*HIV.AIDS) + (Income.composition.of.resources*Adult.Mortality) +(Income.composition.of.resources*HIV.AIDS), data = df1_complete)
+    summary(simple.model)
+    
+      
 ```
 
 2. Create the model
@@ -347,6 +497,54 @@ Set of predictors from previous regression: (fill this out)
 
 1.  Model
 ```{r}
+
+
+# RANDOM FOREST
+# all variables
+rf <- randomForest(
+  Life.expectancy ~ .,
+  data=train
+)
+
+varImpPlot(rf)
+
+
+pred = predict(rf, newdata=test)
+pred.df <- as.data.frame(pred)
+pred.df$true <- test$Life.expectancy
+pred.df$idu <- as.numeric(row.names(pred.df))
+ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+
+plot(rf)
+
+cm = table(test, pred)
+print(rf)
+
+# limited variables !!!!!!!!!!!!!!!!
+
+train %>% select(Adult.Mortality,)
+
+rf <- randomForest(
+  Life.expectancy ~ .,
+  data=train
+)
+
+varImpPlot(rf)
+
+prediction_for_table <- predict(rf_classifier,validation1[,-5])
+table(observed=validation1[,5],predicted=prediction_for_table)
+
+
+pred = predict(rf, newdata=test)
+pred.df <- as.data.frame(pred)
+pred.df$true <- test$Life.expectancy
+pred.df$idu <- as.numeric(row.names(pred.df))
+ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+
+plot(rf)
+
+cm = table(test[-14], pred)
+print(rf)
 
 ```
 
