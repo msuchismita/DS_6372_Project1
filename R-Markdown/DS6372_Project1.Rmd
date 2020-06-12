@@ -286,7 +286,8 @@ Reviewing the graphs, there does not appear to be a significant relationship bet
   - Fails constant variance
 2. log transformations also did not satisfy the required assumptions for regression
   - Fails constant variance
-3. polynomial regression matched the required assumptions with a low R^2 (0.14) and high AIC (920)
+3. polynomial regression matched the required assumptions with a low R^2 (0.14) and high AIC (1280)
+                  Life.expectancy = 68.85 - 0.27 Hepatitis.B + 0.003 I(Hepatitis.B^2)
 
 ```{r}
 
