@@ -555,20 +555,25 @@ B. Interaction Terms
 2. Create the model
 
 ```{r}
-
+complex.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality +(Income.composition.of.resources*HIV.AIDS), data = trainingData)
+summary(complex.model)
 ```
+
 
 3. Compare model 1 vs. model 2
 
 ```{r}
-
+df.models <- data.frame(Models=c('model1', 'model2'))
+df.models$Adj.R2 <- c(summary(lmMod)$adj.r.squared,summary(complex.model)$adj.r.squared)
+df.models$AIC <- c(AIC(lmMod),AIC(complex.model))
+df.models$BIC <- c(BIC(lmMod),BIC(complex.model))
+df.models$CV <- c(CV(lmMod)[[1]],CV(complex.model)[[1]])
+print(df.models)
 ```
 
 4. Comment on the differences of the models and whether model 2 brings any benefit
 
-```{r}
-
-```
+We notice that model 2 (the more complex of the two models) has a lower CV PRESS and higher adjusted R2. While model 1 is simple to comprehend, model 2 has higher predictability powers.
 
 
 ## Objective 2
