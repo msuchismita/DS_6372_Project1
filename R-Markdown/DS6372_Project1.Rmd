@@ -203,11 +203,13 @@ plot(school.model)
 
 Life expectancy has a slight positive increase with alcohol consumption. 
 
-                          life expectancy = 67.11 + 1.11(Alcohol)
+                          life expectancy = 68.03 + 1.07(Alcohol)
 
-Notice that as alcohol consumption incrases, life expectancy incrases by 1.11 years, starting at 67.11 years expected if no alcohol is consumed. 
+Notice that as alcohol consumption increases, life expectancy incrases by 1.07 years, starting at 68.01 years expected if no alcohol is consumed. 
 
 This is a bit counter intuitive considering the knowledge that alcohol is not considered to be healthy and many studies suggest that alcohol could shorten life spans. Keeping this in coonsideration, additional studies may need to be conducted. 
+
+In addition, the model does not meet the require assumptions for linear regression. Specifically, the model lacks constant variance, hence it is not correct.
 ```{r}
 # linear model
 alcohol.model <- lm(Life.expectancy ~Alcohol, data = df1_complete)
