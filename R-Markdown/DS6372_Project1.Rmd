@@ -63,7 +63,18 @@ Although there have been lot of studies undertaken in the past on factors affect
 
 ```
 
+#### ETL
 
+Prior to running the models, the data was manipulated to remove nulls, adjusted for inconsistencies in the data, and eliminating columns that were not required.
+
+1. Removing Nan values
+  This proved to have higher R^2 values and lower number of variables that were considered to be significant. While the model appears to have a better fit, this is not the ideal scenario since ~30% of the data was lost in this process.
+
+2. Filter out percentage.expenditure greather than 100. 
+  This caused additional values to be considered in significant. This is filtered considering that a population cannot spend more than 100% of their GDP on health care.
+
+3. Replace Nan with means
+  This allows for all data to be conserved.
 
 ```{r}
 # Reading datafile
@@ -77,11 +88,11 @@ Although there have been lot of studies undertaken in the past on factors affect
       Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
       Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
     # remove nulls
-      #df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
+      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
       
     # drop population column
-      df1_complete <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
-      df1_complete <- na.omit(df1_complete) 
+      df1_drop <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
+      df1_drop <- na.omit(df1_drop) 
       
 # replace missing data wtih averages
       df_means <- Life_Expectancy_Df_2014
@@ -89,6 +100,8 @@ Although there have been lot of studies undertaken in the past on factors affect
         df_means[is.na(df_means[,i]), i] <- mean(df_means[,i], na.rm = TRUE)
       }
       sum(is.na(df_means))
+      df_means.condense <- df_means[,c(3:23)]
+
 ```
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
@@ -106,14 +119,6 @@ While the other variables intuitively may appear significant, the variables abov
 
 ```{r}
 
-  # ETL
-    # dummy code (developing = 1, developed = 0)
-      values <- c(0, 1)
-      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
-      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
-    # remove nulls
-      df1_complete <- na.omit(Life_Expectancy_Df_2014_dc) 
-      
   # Fit the full model 
     full.model <- lm(Life.expectancy ~., data = df1_complete)
     # Stepwise regression model
