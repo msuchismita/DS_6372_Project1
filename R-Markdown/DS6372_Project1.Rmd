@@ -106,7 +106,7 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
 
-After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy. 
+After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy, where stepwise and backward had the same results.
 
 Variables
 StatusDeveloping                -1.923054   
@@ -118,6 +118,9 @@ Diphtheria                       0.028511
 HIV.AIDS                        -1.020423   
 Income.composition.of.resources 27.870308
 
+adjusted R^2: 0.83
+AIC: 992.018
+
 While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
 
 ```{r}
@@ -128,6 +131,7 @@ While the other variables intuitively may appear significant, the variables abov
       step.model <- stepAIC(full.model, direction = "both", 
                         trace = FALSE)
       summary(step.model)
+      AIC(step.model)
     # forward regression model
       foward.model <- stepAIC(full.model, direction = "forward", 
                         trace = FALSE)
@@ -172,9 +176,9 @@ Life expectancy and schooling have a positive linear relationship. Despite not b
 
 The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression below:
 
-                          life expectancy = 38.72 + 2.51(schooling)
+                          life expectancy = 41.42 + 2.34 (schooling)
 
-We notice that as schooling increases by a year, life expectancy is increased by 2.5 years, with no schooling having a life expectancy of 38.72 years.
+We notice that as schooling increases by a year, life expectancy is increased by 2.5 years, with no schooling having a life expectancy of 38.72 years. Adjusted R^2: 0.5949
 
 ```{r}
 
