@@ -552,7 +552,7 @@ summary (lmMod)  # model summary
 
 # accuracy statistics
 
-actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred))  # make actuals_predicteds dataframe.
+actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.confidence))  # make actuals_predicteds dataframe.
 correlation_accuracy <- cor(actuals_preds)  # 82.7%
 
 AIC(lmMod)
@@ -669,15 +669,15 @@ Set of predictors from previous regression: (fill this out)
 # all variables
 rf <- randomForest(
   Life.expectancy ~ .,
-  data=train
+  data=trainingData
 )
 
 varImpPlot(rf)
 
 
-pred = predict(rf, newdata=test)
+pred = predict(rf, newdata=testData)
 pred.df <- as.data.frame(pred)
-pred.df$true <- test$Life.expectancy
+pred.df$true <- testData$Life.expectancy
 pred.df$idu <- as.numeric(row.names(pred.df))
 ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
 
@@ -685,31 +685,28 @@ plot(rf)
 
 print(rf)
 
-# limited variables !!!!!!!!!!!!!!!!
+# limited variables 
 
-train %>% select(Adult.Mortality,)
+new.train <- trainingData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
+new.test <- testData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
 
-rf <- randomForest(
+new.rf <- randomForest(
   Life.expectancy ~ .,
-  data=train
+  data=new.train
 )
 
-varImpPlot(rf)
+varImpPlot(new.rf)
 
-prediction_for_table <- predict(rf_classifier,validation1[,-5])
-table(observed=validation1[,5],predicted=prediction_for_table)
+new.pred <- predict(new.rf, newdata=new.test)
+new.pred.df <- as.data.frame(new.pred)
+new.pred.df$true <- new.test$Life.expectancy
+new.pred.df$idu <- as.numeric(row.names(new.pred.df))
+ggplot() +  geom_point(data=new.pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=new.pred.df, aes(x = idu, y = pred ), color='red')
 
+plot(new.rf)
 
-pred = predict(rf, newdata=test)
-pred.df <- as.data.frame(pred)
-pred.df$true <- test$Life.expectancy
-pred.df$idu <- as.numeric(row.names(pred.df))
-ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+print(new.rf)
 
-plot(rf)
-
-cm = table(test[-14], pred)
-print(rf)
 
 ```
 
