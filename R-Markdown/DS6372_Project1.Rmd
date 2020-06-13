@@ -101,16 +101,16 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
       gg_miss_var(Life_Expectancy_Df_2014)
 
 # remove Nan rows
-    # dummy code (developing = 1, developed = 0)
-      values <- c(0, 1)
-      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
-      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+#    # dummy code (developing = 1, developed = 0)
+#      values <- c(0, 1)
+#      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+#      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
     # remove nulls
-      df1_no.nan <- na.omit(Life_Expectancy_Df_2014_dc) 
+#      df1_no.nan <- na.omit(Life_Expectancy_Df_2014_dc) 
       
     # drop population column
-      df1_drop <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
-      df1_drop <- na.omit(df1_drop) 
+#      df1_drop <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
+#      df1_drop <- na.omit(df1_drop) 
       
 # replace missing data wtih averages
       df_means <- Life_Expectancy_Df_2014
@@ -118,8 +118,13 @@ Prior to running the models, the data was manipulated to remove nulls, adjusted 
         df_means[is.na(df_means[,i]), i] <- mean(df_means[,i], na.rm = TRUE)
       }
       sum(is.na(df_means))
-      df1_complete <- df_means[,c(3:23)]
+      df1_complete <- df_means[,c(3:22)]
       #df_means.condense <- df_means.condense %>% filter(df_means.condense$percentage.expenditure < 100)
+
+# Adding a column to categorize Life.expectancy as >= 65 and < 65 for comparison
+      Life.expectancy.category=ifelse(df1_complete$Life.expectancy >= 65.0,"High","Low")
+      df1_complete =data.frame(df1_complete ,Life.expectancy.category)
+      
 ```
 
 #### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
@@ -167,25 +172,99 @@ plot(full.model)
 
 #### 2.Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
 
+We assume that the collected data set is not accurate for percentage expenditure column.
+If the definition of percentage expenditure is Expenditure on health as a percentage of Gross Domestic Product per capita(%), then it can never be more than 100%.
+Also, it is higly unlikely that any country would spend 100% of its GDP on healthcare.
+
+So, ignoring percentage expenditure column in analysis. We are using only Total expenditure for finding out if it has an impact on life expectancy value.
+
+From EDA and 2-sample t-test, we see that life expectancy value does not have statisctical significance on healthcare expenditure.
+
+t = 1.9583, 
+df = 181, 
+p-value = 0.05173
+
+95 percent confidence interval: -0.00710969,  1.88675914
+Since 0 is one of the plausible values, so we can say that effect of Total expenditure on life expectancy value greater than 65 and less than 65 is not statistically significant.
+
 ```{r}
+  #2-sample t-test for Life Expectancy value:
 
-
+      res.total.expenditure <- t.test(Total.expenditure ~ Life.expectancy.category , data = df1_complete, var.equal = TRUE)
+      res.total.expenditure
+        
+  # Fitting the tree model for classifying life expectancy value based on healthcare expenditure
+      df1_complete$Life.expectancy.category <- as.factor(df1_complete$Life.expectancy.category)
+      healthcare.expenditure.tree <- tree(formula = Life.expectancy.category ~ Total.expenditure, data = df1_complete)
+      
+  # summary statistics of healthcare.expenditure.model for life expectancy
+      summary(healthcare.expenditure.tree)
+      plot(healthcare.expenditure.tree, pretty =0)
 ```
 
 #### 3.How does Infant and Adult mortality rates affect life expectancy?
 
+From EDA, effect of Infant death does not look significant on life expectancy. But we see that Adult.Mortality rate is negatively coreelated Life Expectancy, 
+
+The relationship between Adult.Mortality and life expectancy can be modeled by the regression equation below:
+
+                          life expectancy = 80.64428 + -0.06125 (Adult Mortality)
+
+We notice that as Adult.Mortality value increase by an one, life expectancy is expected to decrese by 0.06125 years. With no Adult.Mortality,  a life expectancy is exepcted to be 80.64428 years.
+Adjusted R^2: 0.5732
+
+And when we used Adult.Mortality and Infant death together, it did not meet linear regression model assumption.
+
 ```{r}
 
+  #Fitting Adult.Mortality model 
+      Adult.Mortality.model <- lm(Life.expectancy ~Adult.Mortality, data = df1_complete)
+      summary(Adult.Mortality.model)
 
+  # graph the regession 
+      p.Adult.Mortality <- ggplot(df1_complete, aes(x =  Adult.Mortality , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+      ggplotly(p.Adult.Mortality)
+
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(Adult.Mortality.model)
+
+  #Fitting  model for both Adult.Mortality and Infant death
+      Adult.infant.model <- lm(Life.expectancy ~Adult.Mortality+infant.deaths, data = df1_complete)
+      summary(Adult.infant.model)
+
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(Adult.infant.model)
 
 ```
 
 #### 4.Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
 
+We assume that BMI rate is related to lifestyle, eating habits, exercise. Since we see a positive co-relation of BMI with Life Expectancy, we assume that with good eating habits, ample exercice and healthy lifestyle life expectancy would be more.
+
+The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression equation below:
+
+                          life expectancy = 63.57 + 0.19423 (BMI)
+
+We notice that as BMI values increase by an unit, life expectancy is expected to increase by 0.19423 years.
+With no BMI,  a life expectancy is exepcted to be 63.57 years (which practially does not make sense).
+Adjusted R^2: 0.2226
+
+Note: Alcohol effect is covered in question: 6.
+
 ```{r}
+  #Fitting BMI model 
+      BMI.model <- lm(Life.expectancy ~BMI, data = df1_complete)
+      summary(BMI.model)
 
+  # graph the regession 
+      p.BMI <- ggplot(df1_complete, aes(x =  BMI , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+      ggplotly(p.BMI)
 
-
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(BMI.model)
 ```
 
 #### 5.What is the impact of schooling on the lifespan of humans?
