@@ -155,18 +155,25 @@ While the other variables intuitively may appear significant, the variables abov
                         trace = FALSE)
       summary(step.model)
       AIC(step.model)
+      residual.plots(step.model)
+      plot(Life.expectancy ~., data = df1_complete)
+      abline(step.model)
     # forward regression model
       foward.model <- stepAIC(full.model, direction = "forward", 
                         trace = FALSE)
       summary(foward.model)
+      residual.plots(foward.model)
     # backward regression model
       backward.model <- stepAIC(full.model, direction = "backward", 
                         trace = FALSE)
       summary(backward.model)
-      
+      CV(backward.model)
+      residual.plots(backward.model)
 # assumptions testing
 par(mfrow = c(2, 2))
-plot(full.model)
+residual.plots(full.model)
+
+
 
 ```
 
@@ -563,6 +570,34 @@ predict(lmMod, testData, interval="confidence")
 
 ```
 
+Comparing the models
+```{r}
+#train/test all models
+    train.full.model <- lm(Life.expectancy ~., data = trainingData)
+    # Stepwise regression model
+      trian.step.model <- stepAIC(train.full.model, direction = "both", 
+                        trace = FALSE)
+      distPred <- predict(trian.step.model, testData)
+      actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred))  # make actuals_predicteds dataframe.
+    correlation_accuracy <- cor(actuals_preds)
+        # Forward regression model
+      trian.for.model <- stepAIC(train.full.model, direction = "forward", 
+                        trace = FALSE)
+      distPred.for <- predict(trian.for.model, testData)
+      actuals_preds.for <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.for))  # make actuals_predicteds dataframe.
+    correlation_accuracy.for <- cor(actuals_preds.for)
+
+summary(lasso.linear.model)
+
+# dataframe to hold all metrics
+df.models1 <- data.frame(Models=c('forward', 'stepwise', 'lasso'))
+df.models1$CV <- c(CV(foward.model)[[1]],CV(step.model)[[1]], CV(lasso.linear.model)[[1]])
+df.models1$AIC <- c(CV(foward.model)[[2]],CV(step.model)[[2]], CV(lasso.linear.model)[[2]])
+df.models1$BIC <- c(CV(foward.model)[[4]],CV(step.model)[[4]], CV(lasso.linear.model)[[4]])
+df.models1$AdjR2  <- c(CV(foward.model)[[5]],CV(step.model)[[5]], CV(lasso.linear.model)[[5]])
+df.models1$Accuracy <- c(0.78,0.79, 0.76)
+
+```
 3. Hypothesis Testing
 ```{r}
 
