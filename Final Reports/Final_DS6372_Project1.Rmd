@@ -1,0 +1,751 @@
+---
+title: "DS 6372 Project 1"
+output: html_document
+---
+# World Health Organization
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(GGally)
+library(tidyverse)
+library(naniar)
+library(zoom)
+library(MASS)
+library(plotly)
+library(ggpubr)
+library(onewaytests)
+library(glmnet)
+library(randomForest)
+library(DAAG)
+library(forecast)
+library(tree)
+
+```
+
+## Context
+
+Although there have been lot of studies undertaken in the past on factors affecting life expectancy considering demographic variables, income composition and mortality rates. It was found that affect of immunization and human development index was not taken into account in the past. Also, some of the past research was done considering multiple linear regression based on data set of one year for all the countries. Hence, this gives motivation to resolve both the factors stated previously by formulating a regression model based on mixed effects model and multiple linear regression while considering data from a period of 2000 to 2015 for all the countries. Important immunization like Hepatitis B, Polio and Diphtheria will also be considered. In a nutshell, this study will focus on immunization factors, mortality factors, economic factors, social factors and other health related factors as well. Since the observations this dataset are based on different countries, it will be easier for a country to determine the predicting factor which is contributing to lower value of life expectancy. This will help in suggesting a country which area should be given importance in order to efficiently improve the life expectancy of its population.
+
+*Column Names: Meanings*
+
+- Year: Year
+- Status: Developed or Developing status
+- Life expectancy: Life Expectancy in age
+- Adult Mortality: Adult Mortality Rates of both sexes (probability of dying between 15 and 60 years per 1000 population)
+- infant deaths: Number of Infant Deaths per 1000 population
+- Alcohol: Alcohol, recorded per capita (15+) consumption (in litres of pure alcohol)
+- percentage expenditure: Expenditure on health as a percentage of Gross Domestic Product per capita(%)
+- Hepatitis B: Hepatitis B (HepB) immunization coverage among 1-year-olds (%)
+- Measles:Measles - number of reported cases per 1000 population
+- BMI: Average Body Mass Index of entire population
+- Polio: Polio (Pol3) immunization coverage among 1-year-olds (%)
+- Total expenditure: General government expenditure on health as a percentage of total government expenditure (%)
+- Diphtheria: Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage among 1-year-olds (%)
+- HIV/AIDS: Deaths per 1 000 live births HIV/AIDS (0-4 years)
+- GDP: Gross Domestic Product per capita (in USD)
+- Population: Population of the country
+- thinness 1-19 years: Prevalence of thinness among children and adolescents for Age 10 to 19 (%)
+- thinness 5-9 years: Prevalence of thinness among children for Age 5 to 9(%)
+- income composition of resources: Human Development Index in terms of income composition of resources (index ranging from 0 to 1)
+- schooling: Number of years of Schooling(years)
+
+
+```{r}
+
+# creates all required resisual plots
+
+    residual.plots <- function (model) {
+      par(mfrow = c(2, 3))
+      p1 <- plot(model)
+      p2 <- plot(model, 3)
+      p3 <- plot(model, 4)
+      return(list(p1, p2, p3))
+    }
+
+# Compute R^2 from true and predicted values
+      eval_results <- function(true, predicted, df) {
+        SSE <- sum((predicted - true)^2)
+        SST <- sum((true - mean(true))^2)
+        R_square <- 1 - SSE / SST
+        RMSE = sqrt(SSE/nrow(df))
+      
+        
+        # Model performance metrics
+      data.frame(
+        RMSE = RMSE,
+        Rsquare = R_square
+      )
+        
+      }
+
+```
+
+#### ETL
+
+Prior to running the models, the data was manipulated to remove nulls, adjusted for inconsistencies in the data, and eliminating columns that were not required.
+
+1. Removing Nan values
+  This proved to have higher R^2 values and lower number of variables that were considered to be significant. While the model appears to have a better fit, this is not the ideal scenario since ~30% of the data was lost in this process.
+
+2. Filter out percentage.expenditure greather than 100. 
+  This caused additional values to be considered in significant. This is filtered considering that a population cannot spend more than 100% of their GDP on health care.
+
+3. Replace Nan with means
+  This allows for all data to be conserved.
+
+```{r}
+# Reading datafile
+      Life_Expectancy_Df <- read.csv("../data\ /Life\ Expectancy\ Data.csv", header=TRUE)
+      Life_Expectancy_Df_2014 <- Life_Expectancy_Df %>% filter(Year == 2014) # Keeping only 2014 data as per requirement
+      gg_miss_var(Life_Expectancy_Df_2014)
+
+# remove Nan rows
+#    # dummy code (developing = 1, developed = 0)
+#      values <- c(0, 1)
+#      Life_Expectancy_Df_2014$Status_dc <- values[Life_Expectancy_Df_2014$Status]
+#      Life_Expectancy_Df_2014_dc <- Life_Expectancy_Df_2014[,c(4:23)]
+    # remove nulls
+#      df1_no.nan <- na.omit(Life_Expectancy_Df_2014_dc) 
+      
+    # drop population column
+#      df1_drop <- subset(Life_Expectancy_Df_2014_dc, select = -c(Population, GDP) )
+#      df1_drop <- na.omit(df1_drop) 
+      
+# replace missing data wtih averages
+      df_means <- Life_Expectancy_Df_2014
+      for(i in 1:ncol(df_means)){
+        df_means[is.na(df_means[,i]), i] <- mean(df_means[,i], na.rm = TRUE)
+      }
+      sum(is.na(df_means))
+      df1_complete <- df_means[,c(3:22)]
+      #df_means.condense <- df_means.condense %>% filter(df_means.condense$percentage.expenditure < 100)
+
+# Adding a column to categorize Life.expectancy as >= 65 and < 65 for comparison
+      Life.expectancy.category=ifelse(df1_complete$Life.expectancy >= 65.0,"High","Low")
+      df1_complete =data.frame(df1_complete ,Life.expectancy.category)
+      
+```
+
+#### 1. Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
+
+After running multiple regression models (forward, backward, and stepwise), it was determined that the following variables are the predictors that are statically significant in regards to life expectancy, where stepwise and backward had the same results.
+
+Variables
+StatusDeveloping                -1.923054   
+Adult.Mortality                 -0.016917   
+infant.deaths                    0.086154   
+under.five.deaths               -0.067124   
+Total.expenditure                0.250440   
+Diphtheria                       0.028511   
+HIV.AIDS                        -1.020423   
+Income.composition.of.resources 27.870308
+
+adjusted R^2: 0.83
+AIC: 992.018
+
+While the other variables intuitively may appear significant, the variables above are the predictors that have significant impact according to the regression models. interestingly enough, all models resulted in the same variables being returned. 
+
+```{r}
+
+  # Fit the full model 
+    full.model <- lm(Life.expectancy ~., data = df1_complete)
+    # Stepwise regression model
+      step.model <- stepAIC(full.model, direction = "both", 
+                        trace = FALSE)
+      summary(step.model)
+      AIC(step.model)
+      residual.plots(step.model)
+      plot(Life.expectancy ~., data = df1_complete)
+      abline(step.model)
+    # forward regression model
+      foward.model <- stepAIC(full.model, direction = "forward", 
+                        trace = FALSE)
+      summary(foward.model)
+      residual.plots(foward.model)
+    # backward regression model
+      backward.model <- stepAIC(full.model, direction = "backward", 
+                        trace = FALSE)
+      summary(backward.model)
+      CV(backward.model)
+      residual.plots(backward.model)
+# assumptions testing
+par(mfrow = c(2, 2))
+residual.plots(full.model)
+
+
+
+```
+
+#### 2.Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
+
+We assume that the collected data set is not accurate for percentage expenditure column.
+If the definition of percentage expenditure is Expenditure on health as a percentage of Gross Domestic Product per capita(%), then it can never be more than 100%.
+Also, it is higly unlikely that any country would spend 100% of its GDP on healthcare.
+
+So, ignoring percentage expenditure column in analysis. We are using only Total expenditure for finding out if it has an impact on life expectancy value.
+
+From EDA and 2-sample t-test, we see that life expectancy value does not have statisctical significance on healthcare expenditure.
+
+t = 1.9583, 
+df = 181, 
+p-value = 0.05173
+
+95 percent confidence interval: -0.00710969,  1.88675914
+Since 0 is one of the plausible values, so we can say that effect of Total expenditure on life expectancy value greater than 65 and less than 65 is not statistically significant.
+
+```{r}
+  #2-sample t-test for Life Expectancy value:
+
+      res.total.expenditure <- t.test(Total.expenditure ~ Life.expectancy.category , data = df1_complete, var.equal = TRUE)
+      res.total.expenditure
+        
+  # Fitting the tree model for classifying life expectancy value based on healthcare expenditure
+      df1_complete$Life.expectancy.category <- as.factor(df1_complete$Life.expectancy.category)
+      healthcare.expenditure.tree <- tree(formula = Life.expectancy.category ~ Total.expenditure, data = df1_complete)
+      
+  # summary statistics of healthcare.expenditure.model for life expectancy
+      summary(healthcare.expenditure.tree)
+      plot(healthcare.expenditure.tree, pretty =0)
+```
+
+#### 3.How does Infant and Adult mortality rates affect life expectancy?
+
+From EDA, effect of Infant death does not look significant on life expectancy. But we see that Adult.Mortality rate is negatively coreelated Life Expectancy, 
+
+The relationship between Adult.Mortality and life expectancy can be modeled by the regression equation below:
+
+                          life expectancy = 80.64428 + -0.06125 (Adult Mortality)
+
+We notice that as Adult.Mortality value increase by an one, life expectancy is expected to decrese by 0.06125 years. With no Adult.Mortality,  a life expectancy is exepcted to be 80.64428 years.
+Adjusted R^2: 0.5732
+
+And when we used Adult.Mortality and Infant death together, it did not meet linear regression model assumption.
+
+```{r}
+
+  #Fitting Adult.Mortality model 
+      Adult.Mortality.model <- lm(Life.expectancy ~Adult.Mortality, data = df1_complete)
+      summary(Adult.Mortality.model)
+
+  # graph the regession 
+      p.Adult.Mortality <- ggplot(df1_complete, aes(x =  Adult.Mortality , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+      ggplotly(p.Adult.Mortality)
+
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(Adult.Mortality.model)
+
+  #Fitting  model for both Adult.Mortality and Infant death
+      Adult.infant.model <- lm(Life.expectancy ~Adult.Mortality+infant.deaths, data = df1_complete)
+      summary(Adult.infant.model)
+
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(Adult.infant.model)
+
+```
+
+#### 4.Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
+
+We assume that BMI rate is related to lifestyle, eating habits, exercise. Since we see a positive co-relation of BMI with Life Expectancy, we assume that with good eating habits, ample exercice and healthy lifestyle life expectancy would be more.
+
+The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression equation below:
+
+                          life expectancy = 63.57 + 0.19423 (BMI)
+
+We notice that as BMI values increase by an unit, life expectancy is expected to increase by 0.19423 years.
+With no BMI,  a life expectancy is exepcted to be 63.57 years (which practially does not make sense).
+Adjusted R^2: 0.2226
+
+Note: Alcohol effect is covered in question: 6.
+
+```{r}
+  #Fitting BMI model 
+      BMI.model <- lm(Life.expectancy ~BMI, data = df1_complete)
+      summary(BMI.model)
+
+  # graph the regession 
+      p.BMI <- ggplot(df1_complete, aes(x =  BMI , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+      ggplotly(p.BMI)
+
+  # assumptions testing
+      par(mfrow = c(2, 2))
+      plot(BMI.model)
+```
+
+#### 5.What is the impact of schooling on the lifespan of humans?
+
+Life expectancy and schooling have a positive linear relationship. Despite not being significant in the full model, schooling is a significant indicator when its modeled as a singly linear regression. 
+
+The summary statistics shows high significants of alpha less than 0.001. The relationship can be modeled by the regression below:
+
+                          life expectancy = 41.42 + 2.34 (schooling)
+
+We notice that as schooling increases by a year, life expectancy is increased by 2.5 years, with no schooling having a life expectancy of 38.72 years. Adjusted R^2: 0.5949
+
+```{r}
+
+# linear model
+school.model <- lm(Life.expectancy ~Schooling, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(school.model)
+
+# graph the regession 
+p.school <- ggplot(Life_Expectancy_Df_2014, aes(x =  Schooling , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.school)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(school.model)
+
+```
+
+#### 6.Does Life Expectancy have positive or negative relationship with drinking alcohol?
+
+
+Life expectancy has a slight positive increase with alcohol consumption. 
+
+                          life expectancy = 68.03 + 1.07(Alcohol)
+
+Notice that as alcohol consumption increases, life expectancy incrases by 1.07 years, starting at 68.01 years expected if no alcohol is consumed. 
+
+This is a bit counter intuitive considering the knowledge that alcohol is not considered to be healthy and many studies suggest that alcohol could shorten life spans. Keeping this in coonsideration, additional studies may need to be conducted. 
+
+In addition, the model does not meet the require assumptions for linear regression. Specifically, the model lacks constant variance, hence it is not correct.
+```{r}
+# linear model
+alcohol.model <- lm(Life.expectancy ~Alcohol, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(alcohol.model)
+
+# graph the regession 
+p.alcohol <- ggplot(Life_Expectancy_Df_2014, aes(x =  Alcohol , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.alcohol)
+
+par(mfrow = c(2, 2))
+plot(alcohol.model)
+
+```
+
+#### 7.Do densely populated countries tend to have lower life expectancy?
+Initally, there is a significant outlier that skews the data dramatically. Once removed, we noticed the sloped droped by nearly 50%. Considering that there is the possibility of having significanlt high populations, it has been concluded to keep the data point in.
+
+                          life expectancy = 71.71 - 1.12e-8(Population)
+
+Notice that as the population in a country increases, life expectancy decreases by 2.65 years, starting at 70.58 years expected if there is no population. In this scenario, the intercept independent of the slope has no logical reasoning considering that no population would result in no life expectancy.
+
+We notice again that the model fails constant variance, hence, the model cannot be utilized.
+
+```{r}
+
+# linear model
+popultion.model <- lm(Life.expectancy ~Population, data = df1_complete)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model)
+
+# graph the regession 
+p.population <- ggplot(Life_Expectancy_Df_2014, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model)
+
+
+# remove the outlier
+
+attach(df1_complete)
+
+# sort by mpg
+
+newdata <- df1_complete %>% arrange(desc(Population))
+
+# drop outlier
+newdata = newdata[-1,]
+
+# linear model
+popultion.model2 <- lm(Life.expectancy ~Population, data = newdata)
+
+# summary statistics of schooling vs. life expectancy
+summary(popultion.model2)
+
+# graph the regession 
+p.population2 <- ggplot(newdata, aes(x =  Population , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", col = "red")
+ggplotly(p.population2)
+
+# assumptions testing
+par(mfrow = c(2, 2))
+plot(popultion.model2)
+
+```
+
+#### 8.What is the impact of Immunization coverage on life Expectancy?
+Reviewing the graphs, there does not appear to be a significant relationship between life expectancy and immunization.
+
+1. linear regession is not applicable due to the fact that the data doesn't match the required assumptions.
+  - Fails constant variance
+2. log transformations also did not satisfy the required assumptions for regression
+  - Fails constant variance
+3. polynomial regression matched the required assumptions with a low R^2 (0.14) and high AIC (1280)
+                  Life.expectancy = 68.85 - 0.27 Hepatitis.B + 0.003 I(Hepatitis.B^2)
+
+```{r}
+
+# 1. LINEAR REGRESSION
+    # list of immunizations
+    df_immunizations <- df1_complete %>% select("Life.expectancy", "Hepatitis.B", "Polio", "Diphtheria")
+    
+    # linear model
+    immunization.model <- lm(Life.expectancy ~., data = df_immunizations)
+    
+    # summary statistics of schooling vs. life expectancy
+    summary(immunization.model)
+    
+    # graph the regession 
+    require(gridExtra)
+    
+    p1 <- ggplot(Life_Expectancy_Df_2014, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point()
+    p2 <- ggplot(Life_Expectancy_Df_2014, aes(x = Polio , y = Life.expectancy )) +  geom_point()
+    p3 <- ggplot(Life_Expectancy_Df_2014, aes(x = Diphtheria , y = Life.expectancy )) +  geom_point()
+    
+    grid.arrange(p1, p2, p3, ncol=2)
+    
+    # assumptions testing
+    
+    residual.plots(immunization.model)
+
+# 2. LOG TRANSFORMATIONS
+    
+    # create logged transformations
+    df_immunizations$log.Life.expectancy <- log(df_immunizations$Life.expectancy)
+    df_immunizations$log.Hepatitis.B <- log(df_immunizations$Hepatitis.B)
+    
+    # log-log linear model
+    log.immunization.model <- lm(log.Life.expectancy ~log.Hepatitis.B, data = df_immunizations)
+    
+    # summary statistics
+    summary(log.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = log.Hepatitis.B , y = log.Life.expectancy )) +  geom_point()
+    
+    # residual plots
+    residual.plots(log.immunization.model)
+    
+# 3. POLYNOMIAL REGRESSION TESTING
+    # linear model
+    ploy.immunization.model <- lm(Life.expectancy ~Hepatitis.B+I(Hepatitis.B^2), data = df_immunizations)
+    
+    # summary statistics
+    summary(ploy.immunization.model)
+    AIC(ploy.immunization.model)
+    BIC(ploy.immunization.model)
+    
+    # graph regression
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "loess", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with trend line")
+    
+    ggplot(df_immunizations, aes(x = Hepatitis.B , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) + ggtitle("Life Expectancy vs. Heptatitis B with quadratic regression line")
+    
+    # residual plots
+    residual.plots(ploy.immunization.model)
+
+```
+
+
+
+## Objective 1
+Display the ability to build regression models using the skills and discussions from Unit 1 and 2 with the purpose of identifying key relationships, interpreting those relationships, and making good predictions.  
+
+*Reminder, key here is to tell a good story.*
+
+### Build  Model 1
+  - Identify key relationships
+  - Ensure interpretability
+
+Unit 2 Objectives:
+- bias vs. variance
+- complexity 
+- LASSO/LARS, CV (cross validation)
+
+1. Perform regression analysis
+
+
+- LASSO
+Using the lasso regression method, the following were determined to be significant
+                          Income.composition.of.resources
+While there were other variables that made the model (total expenditure, HIV.AIDs, and BMI), their coefficients are extremely small and not considered to be significant.
+
+                  Life expectancy = 37.72 + 49.11 (income)
+R^2: 0.7317 
+
+CV: 9.896252
+
+Notice that there is a drop in R^2 as opposed to the linear model, but there is significantly less complexity.
+
+
+```{r}
+
+# LASSO 
+    
+    ## set the seed to make your partition reproducible
+    smp_size <- floor(0.5 * nrow(df1_complete))
+    
+    set.seed(1234)
+    index <- sample(seq_len(nrow(df1_complete)), size = smp_size)
+    
+    train<-df1_complete[index,]
+    test<-df1_complete[-index,]
+
+    
+    #Formatting data for GLM net
+    x=model.matrix(Life.expectancy~.,train)[,-1]
+    y=(train$Life.expectancy)
+    
+    xtest<-model.matrix(Life.expectancy~.,test)[,-1]
+    ytest<-(test$Life.expectancy)
+    
+    
+    grid=10^seq(10,-2, length =100)
+    lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+    
+    cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+    plot(cv.out)
+    bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+    lasso.pred=predict(lasso.mod ,s=bestlambda ,newx=xtest)
+    
+    testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+    testMSE_LASSO
+    
+    # review coefficients
+    coef(lasso.mod,s=bestlambda)
+    
+    # plot variable analysis
+    plot(lasso.mod,xvar="lambda",label=TRUE)
+
+    # review R^2 results
+    eval_results(ytest, lasso.pred, test)
+    
+
+# Fit linear regresion to model
+    lasso.linear.model <- lm(Life.expectancy ~Income.composition.of.resources, data = df1_complete)
+    summary(lasso.linear.model)
+    residual.plots(lasso.linear.model)
+    ggplot(df1_complete, aes(x = Income.composition.of.resources , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "loess", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Income with trend line")
+    
+    ggplot(df1_complete, aes(x = Income.composition.of.resources , y = Life.expectancy )) +  geom_point() + stat_smooth(method = "lm", formula = y ~ x, size = 1) + ggtitle("Life Expectancy vs. Income with regression line")
+
+```
+2. Report predictive ability
+    a. Test/train set
+    b. CV data
+```{r}
+
+# Create Training and Test data -
+set.seed(100)  # setting seed to reproduce results of random sampling
+trainingRowIndex <- sample(1:nrow(df1_complete), 0.8*nrow(df1_complete))  # row indices for training data
+trainingData <- df1_complete[trainingRowIndex, ]  # model training data
+testData  <- df1_complete[-trainingRowIndex, ]   # test data
+
+# Build the model on training data -
+lmMod <- lm(Life.expectancy ~Income.composition.of.resources, data=trainingData)  # build the model
+distPred.confidence <- predict(lmMod, testData, interval = 'confidence', level=0.95)  # predict distance
+distPred.prediction <- predict(lmMod, testData, interval = 'prediction')  # predict distance
+confint(lmMod)
+summary (lmMod)  # model summary
+
+# accuracy statistics
+
+actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.confidence))  # make actuals_predicteds dataframe.
+correlation_accuracy <- cor(actuals_preds)  # 82.7%
+
+AIC(lmMod)
+BIC(lmMod)
+CV(lmMod)
+
+predict(lmMod, testData, interval="confidence") 
+
+```
+
+Comparing the models
+```{r}
+#train/test all models
+    train.full.model <- lm(Life.expectancy ~., data = trainingData)
+    # Stepwise regression model
+      trian.step.model <- stepAIC(train.full.model, direction = "both", 
+                        trace = FALSE)
+      distPred <- predict(trian.step.model, testData)
+      actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred))  # make actuals_predicteds dataframe.
+    correlation_accuracy <- cor(actuals_preds)
+        # Forward regression model
+      trian.for.model <- stepAIC(train.full.model, direction = "forward", 
+                        trace = FALSE)
+      distPred.for <- predict(trian.for.model, testData)
+      actuals_preds.for <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.for))  # make actuals_predicteds dataframe.
+    correlation_accuracy.for <- cor(actuals_preds.for)
+
+summary(lasso.linear.model)
+
+# dataframe to hold all metrics
+df.models1 <- data.frame(Models=c('forward', 'stepwise', 'lasso'))
+df.models1$CV <- c(CV(foward.model)[[1]],CV(step.model)[[1]], CV(lasso.linear.model)[[1]])
+df.models1$AIC <- c(CV(foward.model)[[2]],CV(step.model)[[2]], CV(lasso.linear.model)[[2]])
+df.models1$BIC <- c(CV(foward.model)[[4]],CV(step.model)[[4]], CV(lasso.linear.model)[[4]])
+df.models1$AdjR2  <- c(CV(foward.model)[[5]],CV(step.model)[[5]], CV(lasso.linear.model)[[5]])
+df.models1$Accuracy <- c(0.78,0.79, 0.76)
+
+```
+
+4. Interpret the coefficients
+Life expectancy has a linear relationship iwth income/composition of resource. where as the income index increases, life expectancy increases by 50.2. It should be noted that income/composition of resources ranges from 0 to 1, where the maximum life expectancy if 87.3. This is not fully realistic considering that many may live past this age. In addition, if there is no income or composition of resources, it is expected that the life expectancy is 37.1. While this also may not be applicable, this could pertain to those who are considered unemployed without any income source.
+
+5. Confidence intervals
+```{r}
+distPred.confidence <- predict(lmMod, testData, interval = 'confidence', level=0.95)  # predict distance
+distPred.prediction <- predict(lmMod, testData, interval = 'prediction')  # predict distance
+confint(lmMod)
+```
+
+6. Practical and statistical significance
+The income index is the most significant predictor for life expectancy, explaining more than 70% of the data. 
+
+### Model 2
+
+    - Product the best predictions as possible
+    - Interpretation is no longer required, hence complexity is no longer an issue
+
+1. Feature selection to avoid overfitting
+
+A. Linear Regression
+  - model a: linear regression
+          life expectancy = 36.55 + 50.73(income)
+          Adjusted R^2 = 0.79
+  - model b: linear regression + adult mortality
+          life expectancy = 48.5 + 38.77(income) - 0.025 (adult mortality)
+          Adjusted R^2 = 0.84
+  - model c: linear regression + adult mortality + HIV.AIDS
+          life expectancy = 49.8 + 36.05 (income) - 0.016 (adult mortality) - 0.95 (HIV/AIDS)
+          Adjusted R^2 = 0.85
+B. Interaction Terms
+  - model d: linear regression + adult mortality + HIV.AIDS
+          
+```{r}
+
+# Lasso model lasso.mod determined that income the primary predictor for life expectancy
+  # SIMPLE MODEL
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources, data = df1_complete)
+    # Stepwise regression model
+      simple.step.model <- stepAIC(simple.model, direction = "both", 
+                        trace = FALSE)
+      summary(simple.step.model)
+      
+  # ADDITION OF VARIABLES MODEL
+      # adult mortality
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality , data = df1_complete)
+    summary(simple.model)
+      
+      # Thinness 
+    df.expenditure <- df1_complete %>% filter(df1_complete$percentage.expenditure < 100)
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + Total.expenditure, data = df.expenditure)
+    summary(simple.model)
+      # AIDS
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS, data = df1_complete)
+    summary(simple.model)
+    
+  # Interaction terms
+    simple.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality + HIV.AIDS + (Adult.Mortality*HIV.AIDS) + (Income.composition.of.resources*Adult.Mortality) +(Income.composition.of.resources*HIV.AIDS), data = df1_complete)
+    summary(simple.model)
+    
+      
+```
+
+2. Create the model
+
+```{r}
+complex.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality +(Income.composition.of.resources*HIV.AIDS), data = trainingData)
+summary(complex.model)
+
+residual.plots(complex.model)
+```
+
+
+3. Compare model 1 vs. model 2
+
+```{r}
+
+  distPred.complex <- predict(complex.model, testData)
+  actuals_preds.complex <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.complex))  # make actuals_predicteds dataframe.
+correlation_accuracy.complex <- cor(actuals_preds.complex)
+confint(complex.model)
+
+df.models <- data.frame(Models=c('model1', 'model2'))
+
+df.models$CV <- c(CV(lasso.linear.model)[[1]], CV(complex.model)[[1]])
+df.models$AIC <- c( CV(lasso.linear.model)[[2]], CV(complex.model)[[2]])
+df.models$BIC <- c(CV(lasso.linear.model)[[4]], CV(complex.model)[[4]])
+df.models$AdjR2  <- c(CV(lasso.linear.model)[[5]], CV(complex.model)[[5]])
+df.models$Accuracy <- c( 0.76, 0.85)
+print(df.models)
+```
+
+4. Comment on the differences of the models and whether model 2 brings any benefit
+
+We notice that model 2 (the more complex of the two models) has a lower CV PRESS and higher adjusted R2. While model 1 is simple to comprehend, model 2 has higher predictability powers.
+
+
+## Objective 2
+    - Nonparametric technique
+    - kNN or regression trees (select one)
+1.  Model
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+
+# all variables
+rf <- randomForest(
+  Life.expectancy ~ .,
+  data=trainingData
+)
+
+varImpPlot(rf)
+
+
+pred = predict(rf, newdata=testData)
+pred.df <- as.data.frame(pred)
+pred.df$true <- testData$Life.expectancy
+pred.df$idu <- as.numeric(row.names(pred.df))
+ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+
+plot(rf)
+
+print(rf)
+
+# limited variables 
+
+new.train <- trainingData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
+new.test <- testData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
+
+new.rf <- randomForest(
+  Life.expectancy ~ .,
+  data=new.train
+)
+
+varImpPlot(new.rf)
+
+new.pred <- predict(new.rf, newdata=new.test)
+new.pred.df <- as.data.frame(new.pred)
+new.pred.df$true <- new.test$Life.expectancy
+new.pred.df$idu <- as.numeric(row.names(new.pred.df))
+ggplot() +  geom_point(data=new.pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=new.pred.df, aes(x = idu, y = pred ), color='red')
+
+plot(new.rf)
+
+print(new.rf)
+
+new.rf$confusion
+
+```

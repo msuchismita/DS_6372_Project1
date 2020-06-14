@@ -155,18 +155,25 @@ While the other variables intuitively may appear significant, the variables abov
                         trace = FALSE)
       summary(step.model)
       AIC(step.model)
+      residual.plots(step.model)
+      plot(Life.expectancy ~., data = df1_complete)
+      abline(step.model)
     # forward regression model
       foward.model <- stepAIC(full.model, direction = "forward", 
                         trace = FALSE)
       summary(foward.model)
+      residual.plots(foward.model)
     # backward regression model
       backward.model <- stepAIC(full.model, direction = "backward", 
                         trace = FALSE)
       summary(backward.model)
-      
+      CV(backward.model)
+      residual.plots(backward.model)
 # assumptions testing
 par(mfrow = c(2, 2))
-plot(full.model)
+residual.plots(full.model)
+
+
 
 ```
 
@@ -552,7 +559,7 @@ summary (lmMod)  # model summary
 
 # accuracy statistics
 
-actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred))  # make actuals_predicteds dataframe.
+actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.confidence))  # make actuals_predicteds dataframe.
 correlation_accuracy <- cor(actuals_preds)  # 82.7%
 
 AIC(lmMod)
@@ -563,6 +570,34 @@ predict(lmMod, testData, interval="confidence")
 
 ```
 
+Comparing the models
+```{r}
+#train/test all models
+    train.full.model <- lm(Life.expectancy ~., data = trainingData)
+    # Stepwise regression model
+      trian.step.model <- stepAIC(train.full.model, direction = "both", 
+                        trace = FALSE)
+      distPred <- predict(trian.step.model, testData)
+      actuals_preds <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred))  # make actuals_predicteds dataframe.
+    correlation_accuracy <- cor(actuals_preds)
+        # Forward regression model
+      trian.for.model <- stepAIC(train.full.model, direction = "forward", 
+                        trace = FALSE)
+      distPred.for <- predict(trian.for.model, testData)
+      actuals_preds.for <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.for))  # make actuals_predicteds dataframe.
+    correlation_accuracy.for <- cor(actuals_preds.for)
+
+summary(lasso.linear.model)
+
+# dataframe to hold all metrics
+df.models1 <- data.frame(Models=c('forward', 'stepwise', 'lasso'))
+df.models1$CV <- c(CV(foward.model)[[1]],CV(step.model)[[1]], CV(lasso.linear.model)[[1]])
+df.models1$AIC <- c(CV(foward.model)[[2]],CV(step.model)[[2]], CV(lasso.linear.model)[[2]])
+df.models1$BIC <- c(CV(foward.model)[[4]],CV(step.model)[[4]], CV(lasso.linear.model)[[4]])
+df.models1$AdjR2  <- c(CV(foward.model)[[5]],CV(step.model)[[5]], CV(lasso.linear.model)[[5]])
+df.models1$Accuracy <- c(0.78,0.79, 0.76)
+
+```
 3. Hypothesis Testing
 ```{r}
 
@@ -636,17 +671,27 @@ B. Interaction Terms
 ```{r}
 complex.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality +(Income.composition.of.resources*HIV.AIDS), data = trainingData)
 summary(complex.model)
+
+residual.plots(complex.model)
 ```
 
 
 3. Compare model 1 vs. model 2
 
 ```{r}
+
+  distPred.complex <- predict(complex.model, testData)
+  actuals_preds.complex <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.complex))  # make actuals_predicteds dataframe.
+correlation_accuracy.complex <- cor(actuals_preds.complex)
+confint(complex.model)
+
 df.models <- data.frame(Models=c('model1', 'model2'))
-df.models$Adj.R2 <- c(summary(lmMod)$adj.r.squared,summary(complex.model)$adj.r.squared)
-df.models$AIC <- c(AIC(lmMod),AIC(complex.model))
-df.models$BIC <- c(BIC(lmMod),BIC(complex.model))
-df.models$CV <- c(CV(lmMod)[[1]],CV(complex.model)[[1]])
+
+df.models$CV <- c(CV(lasso.linear.model)[[1]], CV(complex.model)[[1]])
+df.models$AIC <- c( CV(lasso.linear.model)[[2]], CV(complex.model)[[2]])
+df.models$BIC <- c(CV(lasso.linear.model)[[4]], CV(complex.model)[[4]])
+df.models$AdjR2  <- c(CV(lasso.linear.model)[[5]], CV(complex.model)[[5]])
+df.models$Accuracy <- c( 0.76, 0.85)
 print(df.models)
 ```
 
@@ -669,15 +714,15 @@ Set of predictors from previous regression: (fill this out)
 # all variables
 rf <- randomForest(
   Life.expectancy ~ .,
-  data=train
+  data=trainingData
 )
 
 varImpPlot(rf)
 
 
-pred = predict(rf, newdata=test)
+pred = predict(rf, newdata=testData)
 pred.df <- as.data.frame(pred)
-pred.df$true <- test$Life.expectancy
+pred.df$true <- testData$Life.expectancy
 pred.df$idu <- as.numeric(row.names(pred.df))
 ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
 
@@ -685,31 +730,31 @@ plot(rf)
 
 print(rf)
 
-# limited variables !!!!!!!!!!!!!!!!
+# limited variables 
 
-train %>% select(Adult.Mortality,)
+new.train <- trainingData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
+new.test <- testData %>% select(Adult.Mortality,HIV.AIDS, Income.composition.of.resources, Life.expectancy)
 
-rf <- randomForest(
+new.rf <- randomForest(
   Life.expectancy ~ .,
-  data=train
+  data=new.train
 )
 
-varImpPlot(rf)
+varImpPlot(new.rf)
 
-prediction_for_table <- predict(rf_classifier,validation1[,-5])
-table(observed=validation1[,5],predicted=prediction_for_table)
+new.pred <- predict(new.rf, newdata=new.test)
+new.pred.df <- as.data.frame(new.pred)
+new.pred.df$true <- new.test$Life.expectancy
+new.pred.df$idu <- as.numeric(row.names(new.pred.df))
+ggplot() +  geom_point(data=new.pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=new.pred.df, aes(x = idu, y = pred ), color='red')
 
+plot(new.rf)
 
-pred = predict(rf, newdata=test)
-pred.df <- as.data.frame(pred)
-pred.df$true <- test$Life.expectancy
-pred.df$idu <- as.numeric(row.names(pred.df))
-ggplot() +  geom_point(data=pred.df, aes(x = idu, y = true ), color='blue')+  geom_point(data=pred.df, aes(x = idu, y = pred ), color='red')
+print(new.rf)
 
-plot(rf)
+new.rf$confusion
+class.error
 
-cm = table(test[-14], pred)
-print(rf)
 
 ```
 
