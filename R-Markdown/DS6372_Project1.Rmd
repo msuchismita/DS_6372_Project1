@@ -671,17 +671,27 @@ B. Interaction Terms
 ```{r}
 complex.model <- lm(Life.expectancy ~Income.composition.of.resources + Adult.Mortality +(Income.composition.of.resources*HIV.AIDS), data = trainingData)
 summary(complex.model)
+
+residual.plots(complex.model)
 ```
 
 
 3. Compare model 1 vs. model 2
 
 ```{r}
+
+  distPred.complex <- predict(complex.model, testData)
+  actuals_preds.complex <- data.frame(cbind(actuals=testData$Life.expectancy, predicteds=distPred.complex))  # make actuals_predicteds dataframe.
+correlation_accuracy.complex <- cor(actuals_preds.complex)
+confint(complex.model)
+
 df.models <- data.frame(Models=c('model1', 'model2'))
-df.models$Adj.R2 <- c(summary(lmMod)$adj.r.squared,summary(complex.model)$adj.r.squared)
-df.models$AIC <- c(AIC(lmMod),AIC(complex.model))
-df.models$BIC <- c(BIC(lmMod),BIC(complex.model))
-df.models$CV <- c(CV(lmMod)[[1]],CV(complex.model)[[1]])
+
+df.models$CV <- c(CV(lasso.linear.model)[[1]], CV(complex.model)[[1]])
+df.models$AIC <- c( CV(lasso.linear.model)[[2]], CV(complex.model)[[2]])
+df.models$BIC <- c(CV(lasso.linear.model)[[4]], CV(complex.model)[[4]])
+df.models$AdjR2  <- c(CV(lasso.linear.model)[[5]], CV(complex.model)[[5]])
+df.models$Accuracy <- c( 0.76, 0.85)
 print(df.models)
 ```
 
@@ -741,6 +751,9 @@ ggplot() +  geom_point(data=new.pred.df, aes(x = idu, y = true ), color='blue')+
 plot(new.rf)
 
 print(new.rf)
+
+new.rf$confusion
+class.error
 
 
 ```
